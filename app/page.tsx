@@ -218,11 +218,10 @@ export default function Home() {
     const closeMenusOnOutsideClick = (event: PointerEvent) => {
       const target = event.target as Node;
       if (picker === "chapters" && !passagePickerRef.current?.contains(target)) setPicker(null);
-      if (savedPanelOpen && !savedPanelRef.current?.contains(target)) setSavedPanelOpen(false);
     };
     document.addEventListener("pointerdown", closeMenusOnOutsideClick);
     return () => document.removeEventListener("pointerdown", closeMenusOnOutsideClick);
-  }, [picker, savedPanelOpen]);
+  }, [picker]);
 
   useEffect(() => {
     if (!("speechSynthesis" in window)) return;
@@ -749,6 +748,15 @@ export default function Home() {
       setSelectedVerse(saved.verseIds[0]);
       document.getElementById(`verse-${saved.verseIds[0]}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+  };
+  const openBookmarkedChapter = () => {
+    if (!bookmark) return;
+    const book = books.find((item) => item.name === bookmark.book);
+    if (!book) return;
+    pendingSavedVerse.current = 1;
+    setSelectedBook(book);
+    setChapter(bookmark.chapter);
+    setSavedPanelOpen(false);
   };
 
   const toggleCommentaryReading = () => {
