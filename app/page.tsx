@@ -25,6 +25,7 @@ type CommentarySource = {
 type CommentaryChapter = { source: CommentarySource; book: string; chapter: number; entries: CommentaryEntry[] };
 type SavedPlace = { book: string; chapter: number };
 type SavedReference = { key: string; book: Book; chapter: number; verseIds: number[]; reference: string };
+type SavedTextCache = Record<string, Record<number, string>>;
 
 const books: Book[] = [
   ["Genesis",50,"Old Testament"],["Exodus",40,"Old Testament"],["Leviticus",27,"Old Testament"],["Numbers",36,"Old Testament"],["Deuteronomy",34,"Old Testament"],
@@ -118,6 +119,10 @@ function chapterAudioBase(book: string, chapterNumber: number) {
   return `/audio/${bookSlug(book)}/${chapterNumber}`;
 }
 
+function savedTextCacheKey(book: string, chapterNumber: number) {
+  return `${bookSlug(book)}-${chapterNumber}`;
+}
+
 function formatNoteReference(book: string, chapterNumber: number, verseIds: number[]) {
   const sorted = [...verseIds].sort((a, b) => a - b);
   if (sorted.length > 2) return `${book} ${chapterNumber}:${sorted[0]}–${sorted[sorted.length - 1]}`;
@@ -134,6 +139,14 @@ function parseSavedReference(key: string): SavedReference | null {
   const verseIds = sectionMatch ? sectionMatch[2].split("_").map(Number) : verseMatch ? [Number(verseMatch[2])] : [];
   if (!chapterNumber || !verseIds.length) return null;
   return { key, book, chapter: chapterNumber, verseIds, reference: formatNoteReference(book.name, chapterNumber, verseIds) };
+}
+
+function excerptText(text: string, maxLength = 190) {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (clean.length <= maxLength) return clean;
+  const trimmed = clean.slice(0, maxLength - 1);
+  const lastSpace = trimmed.lastIndexOf(" ");
+  return `${trimmed.slice(0, lastSpace > 80 ? lastSpace : trimmed.length).trim()}...`;
 }
 
 export default function Home() {
@@ -153,6 +166,7 @@ export default function Home() {
   const [voiceName, setVoiceName] = useState("");
   const [savedAudioChapters, setSavedAudioChapters] = useState<Set<string>>(new Set());
   const [highlights, setHighlights] = useState<Record<string, HighlightColor>>({});
+  const [savedTextCache, setSavedTextCache] = useState<SavedTextCache>({});
   const [preferredHighlightColor, setPreferredHighlightColor] = useState<HighlightColor>("gold");
   const [selectedForHighlight, setSelectedForHighlight] = useState<number[]>([]);
   const [selectedWord, setSelectedWord] = useState("");
@@ -738,6 +752,55 @@ export default function Home() {
     .filter((item): item is { saved: SavedReference; color: HighlightColor } => Boolean(item.saved))
     .reverse();
   const savedCount = Object.values(notes).filter(Boolean).length + Object.keys(highlights).length + (bookmark ? 1 : 0);
+  const savedReferencesToLoad = useMemo(
+    () => [...recentHighlights.map((item) => item.saved), ...recentNotes.map((item) => item.saved)],
+    [highlights, notes],
+  );
+
+  useEffect(() => {
+    if (!verses.length) return;
+    const cacheKey = savedTextCacheKey(selectedBook.name, chapter);
+    setSavedTextCache((current) => ({
+      ...current,
+      [cacheKey]: Object.fromEntries(verses.map((verse) => [verse.id, verse.text])),
+    }));
+  }, [selectedBook.name, chapter, verses]);
+
+  useEffect(() => {
+    let ignore = false;
+    const uniqueChapters = Array.from(new Map(savedReferencesToLoad.map((saved) => [
+      savedTextCacheKey(saved.book.name, saved.chapter),
+      saved,
+    ])).values()).filter((saved) => !savedTextCache[savedTextCacheKey(saved.book.name, saved.chapter)]);
+    if (!uniqueChapters.length) return;
+
+    async function loadSavedChapterText(saved: SavedReference) {
+      const cacheKey = savedTextCacheKey(saved.book.name, saved.chapter);
+      if (saved.book.name === "Genesis" && saved.chapter === 1) {
+        return [cacheKey, Object.fromEntries(genesisOne.map((verse) => [verse.id, verse.text]))] as const;
+      }
+      const reference = encodeURIComponent(`${saved.book.name} ${saved.chapter}`);
+      const response = await fetch(`https://bible-api.com/${reference}?translation=kjv&single_chapter_book_matching=indifferent`);
+      if (!response.ok) throw new Error("Chapter text unavailable");
+      const data = await response.json() as { verses?: Array<{ verse: number; text: string }> };
+      return [cacheKey, Object.fromEntries((data.verses || []).map((verse) => [verse.verse, verse.text.trim()]))] as const;
+    }
+
+    Promise.allSettled(uniqueChapters.map(loadSavedChapterText)).then((results) => {
+      if (ignore) return;
+      const loaded = results
+        .filter((result): result is PromiseFulfilledResult<readonly [string, Record<number, string>]> => result.status === "fulfilled")
+        .map((result) => result.value);
+      if (!loaded.length) return;
+      setSavedTextCache((current) => ({ ...current, ...Object.fromEntries(loaded) }));
+    });
+    return () => { ignore = true; };
+  }, [savedReferencesToLoad, savedTextCache]);
+
+  const savedVerseText = (saved: SavedReference) => {
+    const chapterText = savedTextCache[savedTextCacheKey(saved.book.name, saved.chapter)] || {};
+    return saved.verseIds.map((id) => chapterText[id]).filter(Boolean).join(" ");
+  };
 
   const openSavedReference = (saved: SavedReference) => {
     pendingSavedVerse.current = saved.verseIds[0];
@@ -758,6 +821,19 @@ export default function Home() {
     setSelectedBook(book);
     setChapter(bookmark.chapter);
     setSavedPanelOpen(false);
+  };
+  const readSavedReference = (saved: SavedReference) => {
+    const text = savedVerseText(saved);
+    if (!text || !("speechSynthesis" in window)) return;
+    stopReading();
+    const utterance = new SpeechSynthesisUtterance(`${saved.reference}. ${text}`);
+    utterance.rate = rate;
+    utterance.voice = voices.find((voice) => voice.name === voiceName) || bestVoice(voices) || null;
+    utterance.onend = () => setIsReading(false);
+    utterance.onerror = () => setIsReading(false);
+    setIsReading(true);
+    setIsPaused(false);
+    window.speechSynthesis.speak(utterance);
   };
 
   const toggleCommentaryReading = () => {
@@ -876,23 +952,35 @@ export default function Home() {
               </div>
               {savedViewTab === "highlights" ? (
                 <div className="saved-list">
-                  {recentHighlights.length ? recentHighlights.map(({ saved, color }) => (
-                    <button key={saved.key} onClick={() => openSavedReference(saved)}>
-                      <i className={`saved-color ${color}`} aria-hidden="true" />
-                      <span><strong>{saved.reference}</strong><small>{color} highlight</small></span>
-                      <b>Jump</b>
-                    </button>
-                  )) : <p>No saved highlights yet.</p>}
+                  {recentHighlights.length ? recentHighlights.map(({ saved, color }) => {
+                    const text = savedVerseText(saved);
+                    return (
+                      <div className="saved-list-item" key={saved.key}>
+                        <button className="saved-jump" onClick={() => openSavedReference(saved)}>
+                          <i className={`saved-color ${color}`} aria-hidden="true" />
+                          <span><strong>{saved.reference}</strong><small>{text ? excerptText(text) : "Loading verse text..."}</small></span>
+                          <b>Jump</b>
+                        </button>
+                        <button className="saved-read-aloud" onClick={() => readSavedReference(saved)} disabled={!text} aria-label={`Read ${saved.reference} aloud`}>Read aloud</button>
+                      </div>
+                    );
+                  }) : <p>No saved highlights yet.</p>}
                 </div>
               ) : (
                 <div className="saved-list">
-                  {recentNotes.length ? recentNotes.map(({ saved, value }) => (
-                    <button key={saved.key} onClick={() => openSavedReference(saved)}>
-                      <i className="saved-pencil" aria-hidden="true">✎</i>
-                      <span><strong>{saved.reference}</strong><small>{value}</small></span>
-                      <b>Jump</b>
-                    </button>
-                  )) : <p>No saved notes yet.</p>}
+                  {recentNotes.length ? recentNotes.map(({ saved, value }) => {
+                    const text = savedVerseText(saved);
+                    return (
+                      <div className="saved-list-item" key={saved.key}>
+                        <button className="saved-jump" onClick={() => openSavedReference(saved)}>
+                          <i className="saved-pencil" aria-hidden="true">✎</i>
+                          <span><strong>{saved.reference}</strong><small>{value}</small></span>
+                          <b>Jump</b>
+                        </button>
+                        <button className="saved-read-aloud" onClick={() => readSavedReference(saved)} disabled={!text} aria-label={`Read ${saved.reference} aloud`}>Read aloud</button>
+                      </div>
+                    );
+                  }) : <p>No saved notes yet.</p>}
                 </div>
               )}
             </div>

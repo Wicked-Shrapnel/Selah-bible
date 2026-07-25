@@ -81,7 +81,11 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /saved-bookmark-card/);
   assert.match(page, /SAVED SECTION/);
   assert.match(page, /aria-label="Saved library sections"/);
+  assert.match(page, /savedVerseText/);
+  assert.match(page, /excerptText/);
+  assert.match(page, /saved-read-aloud/);
   assert.match(page, /Highlights · newest first/);
+  assert.doesNotMatch(page, /\{color\} highlight/);
   assert.match(page, /selah-highlight-color/);
   assert.match(page, /selah-audio-dock-collapsed/);
   assert.match(page, /toggleCommentaryReading/);
