@@ -76,6 +76,9 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /saved-note-indicator/);
   assert.match(page, /Press ✓ to save this note/);
   assert.match(page, /formatNoteReference/);
+  assert.match(page, /closeMenusOnOutsideClick/);
+  assert.match(page, /Saved for later/);
+  assert.match(page, /Highlights · newest first/);
   assert.match(page, /selah-highlight-color/);
   assert.match(page, /selah-audio-dock-collapsed/);
   assert.match(page, /toggleCommentaryReading/);

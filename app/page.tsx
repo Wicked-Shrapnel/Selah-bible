@@ -23,6 +23,7 @@ type CommentarySource = {
 };
 type CommentaryChapter = { source: CommentarySource; book: string; chapter: number; entries: CommentaryEntry[] };
 type SavedPlace = { book: string; chapter: number };
+type SavedReference = { key: string; book: Book; chapter: number; verseIds: number[]; reference: string };
 
 const books: Book[] = [
   ["Genesis",50,"Old Testament"],["Exodus",40,"Old Testament"],["Leviticus",27,"Old Testament"],["Numbers",36,"Old Testament"],["Deuteronomy",34,"Old Testament"],
@@ -118,6 +119,18 @@ function formatNoteReference(book: string, chapterNumber: number, verseIds: numb
   return `${book} ${chapterNumber}:${sorted.join(", ")}`;
 }
 
+function parseSavedReference(key: string): SavedReference | null {
+  const book = [...books].sort((a, b) => b.name.length - a.name.length).find((item) => key.startsWith(`${item.name}-`));
+  if (!book) return null;
+  const remainder = key.slice(book.name.length + 1);
+  const sectionMatch = remainder.match(/^(\d+)-section-(\d+(?:_\d+)*)$/);
+  const verseMatch = remainder.match(/^(\d+)-(\d+)$/);
+  const chapterNumber = Number(sectionMatch?.[1] || verseMatch?.[1]);
+  const verseIds = sectionMatch ? sectionMatch[2].split("_").map(Number) : verseMatch ? [Number(verseMatch[2])] : [];
+  if (!chapterNumber || !verseIds.length) return null;
+  return { key, book, chapter: chapterNumber, verseIds, reference: formatNoteReference(book.name, chapterNumber, verseIds) };
+}
+
 export default function Home() {
   const [selectedBook, setSelectedBook] = useState(books[0]);
   const [chapter, setChapter] = useState(1);
@@ -153,11 +166,15 @@ export default function Home() {
   const [commentaryData, setCommentaryData] = useState<CommentaryChapter | null>(null);
   const [commentaryStatus, setCommentaryStatus] = useState<"loading" | "ready" | "error">("loading");
   const [bookmark, setBookmark] = useState<SavedPlace | null>(null);
+  const [savedPanelOpen, setSavedPanelOpen] = useState(false);
   const [isReadingCommentary, setIsReadingCommentary] = useState(false);
   const [isCommentaryPaused, setIsCommentaryPaused] = useState(false);
   const [commentaryWordIndex, setCommentaryWordIndex] = useState<number | null>(null);
   const cancelled = useRef(false);
   const activeAudio = useRef<HTMLAudioElement | null>(null);
+  const passagePickerRef = useRef<HTMLDivElement | null>(null);
+  const savedPanelRef = useRef<HTMLDivElement | null>(null);
+  const pendingSavedVerse = useRef<number | null>(null);
 
   const passageKey = `${selectedBook.name}-${chapter}`;
   const verseKey = (id: number) => `${passageKey}-${id}`;
@@ -190,6 +207,16 @@ export default function Home() {
       }
     });
   }, []);
+
+  useEffect(() => {
+    const closeMenusOnOutsideClick = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (picker === "chapters" && !passagePickerRef.current?.contains(target)) setPicker(null);
+      if (savedPanelOpen && !savedPanelRef.current?.contains(target)) setSavedPanelOpen(false);
+    };
+    document.addEventListener("pointerdown", closeMenusOnOutsideClick);
+    return () => document.removeEventListener("pointerdown", closeMenusOnOutsideClick);
+  }, [picker, savedPanelOpen]);
 
   useEffect(() => {
     if (!("speechSynthesis" in window)) return;
@@ -246,7 +273,10 @@ export default function Home() {
       if (selectedBook.name === "Genesis" && chapter === 1) {
         setVerses(genesisOne);
         setLoadNotice("");
-        setSelectedVerse(1);
+        const targetVerse = pendingSavedVerse.current || 1;
+        pendingSavedVerse.current = null;
+        setSelectedVerse(targetVerse);
+        window.setTimeout(() => document.getElementById(`verse-${targetVerse}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
         return;
       }
       setIsLoading(true);
@@ -263,7 +293,10 @@ export default function Home() {
             reference: `${selectedBook.name} ${chapter}:${verse.verse}`,
             text: verse.text.trim(),
           })));
-          setSelectedVerse(data.verses[0].verse);
+          const targetVerse = pendingSavedVerse.current || data.verses[0].verse;
+          pendingSavedVerse.current = null;
+          setSelectedVerse(targetVerse);
+          window.setTimeout(() => document.getElementById(`verse-${targetVerse}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
         }
       } catch {
         if (!ignore) {
@@ -489,7 +522,10 @@ export default function Home() {
     const next = { ...highlights };
     selectedForHighlight.forEach((id) => {
       const key = verseKey(id);
-      if (color) next[key] = color;
+      if (color) {
+        delete next[key];
+        next[key] = color;
+      }
       else delete next[key];
     });
     setHighlights(next);
@@ -505,7 +541,10 @@ export default function Home() {
     const key = verseKey(id);
     const next = { ...highlights };
     if (next[key]) delete next[key];
-    else next[key] = preferredHighlightColor;
+    else {
+      delete next[key];
+      next[key] = preferredHighlightColor;
+    }
     setHighlights(next);
     localStorage.setItem("selah-highlights-v2", JSON.stringify(next));
   };
@@ -513,7 +552,10 @@ export default function Home() {
   const setVerseHighlight = (id: number, color?: HighlightColor) => {
     const key = verseKey(id);
     const next = { ...highlights };
-    if (color) next[key] = color;
+    if (color) {
+      delete next[key];
+      next[key] = color;
+    }
     else delete next[key];
     setHighlights(next);
     localStorage.setItem("selah-highlights-v2", JSON.stringify(next));
@@ -583,19 +625,26 @@ export default function Home() {
   };
 
   const updateNote = (value: string) => {
-    const next = { ...notes, [activeNoteKey]: value };
+    const next = { ...notes };
+    delete next[activeNoteKey];
+    next[activeNoteKey] = value;
     setNotes(next);
     localStorage.setItem("selah-notes-v2", JSON.stringify(next));
   };
 
   const updateVerseNote = (verseId: number, value: string) => {
-    const next = { ...notes, [verseKey(verseId)]: value };
+    const key = verseKey(verseId);
+    const next = { ...notes };
+    delete next[key];
+    next[key] = value;
     setNotes(next);
     localStorage.setItem("selah-notes-v2", JSON.stringify(next));
   };
 
   const updateNoteByKey = (key: string, value: string) => {
-    const next = { ...notes, [key]: value };
+    const next = { ...notes };
+    delete next[key];
+    next[key] = value;
     setNotes(next);
     localStorage.setItem("selah-notes-v2", JSON.stringify(next));
   };
@@ -672,6 +721,28 @@ export default function Home() {
   const selectedBookIndex = books.findIndex((book) => book.name === selectedBook.name);
   const hasPreviousChapter = selectedBookIndex > 0 || chapter > 1;
   const hasNextChapter = selectedBookIndex < books.length - 1 || chapter < selectedBook.chapters;
+  const recentNotes = Object.entries(notes)
+    .filter(([, value]) => Boolean(value))
+    .map(([key, value]) => ({ saved: parseSavedReference(key), value }))
+    .filter((item): item is { saved: SavedReference; value: string } => Boolean(item.saved))
+    .reverse();
+  const recentHighlights = Object.entries(highlights)
+    .map(([key, color]) => ({ saved: parseSavedReference(key), color }))
+    .filter((item): item is { saved: SavedReference; color: HighlightColor } => Boolean(item.saved))
+    .reverse();
+  const savedCount = Object.values(notes).filter(Boolean).length + Object.keys(highlights).length + (bookmark ? 1 : 0);
+
+  const openSavedReference = (saved: SavedReference) => {
+    pendingSavedVerse.current = saved.verseIds[0];
+    setSelectedBook(saved.book);
+    setChapter(saved.chapter);
+    setSavedPanelOpen(false);
+    if (saved.book.name === selectedBook.name && saved.chapter === chapter) {
+      pendingSavedVerse.current = null;
+      setSelectedVerse(saved.verseIds[0]);
+      document.getElementById(`verse-${saved.verseIds[0]}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
 
   const toggleCommentaryReading = () => {
     if (!activeCommentaryEntry || !("speechSynthesis" in window)) return;
@@ -727,7 +798,7 @@ export default function Home() {
           <div><strong>Selah</strong><span>Scripture, slowly</span></div>
         </div>
 
-        <div className="passage-picker" aria-label="Choose a Bible passage">
+        <div className="passage-picker" ref={passagePickerRef} aria-label="Choose a Bible passage">
           <button className="book-button" onClick={() => setPicker(picker === "books" ? null : "books")} aria-expanded={picker === "books"}>
             {selectedBook.name} <span>⌄</span>
           </button>
@@ -752,9 +823,40 @@ export default function Home() {
           )}
         </div>
 
-        <div className="header-actions">
+        <div className="header-actions" ref={savedPanelRef}>
           <span className="translation-badge">KJV</span>
-          <button className="avatar" aria-label="Profile">BL</button>
+          <button className="saved-library-button" onClick={() => setSavedPanelOpen((current) => !current)} aria-expanded={savedPanelOpen} aria-label="Open saved highlights, notes, and reading place">
+            <span aria-hidden="true">⌑</span> Saved {savedCount > 0 && <small>{savedCount}</small>}
+          </button>
+          {savedPanelOpen && (
+            <section className="saved-library" aria-label="Saved items">
+              <div className="saved-library-heading"><div><span>YOUR LIBRARY</span><strong>Saved for later</strong></div><button onClick={() => setSavedPanelOpen(false)} aria-label="Close saved items">×</button></div>
+              {bookmark && (
+                <div className="saved-group">
+                  <h3>Reading place</h3>
+                  <button onClick={() => { const book = books.find((item) => item.name === bookmark.book); if (!book) return; pendingSavedVerse.current = 1; setSelectedBook(book); setChapter(bookmark.chapter); setSavedPanelOpen(false); }}>
+                    <i className="saved-bookmark-icon" aria-hidden="true" /><span><strong>{bookmark.book} {bookmark.chapter}</strong><small>Bookmarked chapter</small></span>
+                  </button>
+                </div>
+              )}
+              <div className="saved-group">
+                <h3>Notes · newest first</h3>
+                {recentNotes.length ? recentNotes.map(({ saved, value }) => (
+                  <button key={saved.key} onClick={() => openSavedReference(saved)}>
+                    <i className="saved-pencil" aria-hidden="true">✎</i><span><strong>{saved.reference}</strong><small>{value}</small></span>
+                  </button>
+                )) : <p>No saved notes yet.</p>}
+              </div>
+              <div className="saved-group">
+                <h3>Highlights · newest first</h3>
+                {recentHighlights.length ? recentHighlights.map(({ saved, color }) => (
+                  <button key={saved.key} onClick={() => openSavedReference(saved)}>
+                    <i className={`saved-color ${color}`} aria-hidden="true" /><span><strong>{saved.reference}</strong><small>{color} highlight</small></span>
+                  </button>
+                )) : <p>No saved highlights yet.</p>}
+              </div>
+            </section>
+          )}
         </div>
       </header>
 
