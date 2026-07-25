@@ -103,7 +103,10 @@ test("bundles word-level Hebrew and Greek lookup data", async () => {
 });
 
 test("includes searchable passage selection, saved place, and commentary audio", async () => {
-  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const [page, styles] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
   assert.match(page, /placeholder="Search for a book/);
   assert.match(page, /selah-reading-place-v1/);
   assert.match(page, /setPicker\("chapters"\)/);
@@ -131,6 +134,10 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /toggleVoiceVisibility/);
   assert.match(page, /voice-picker-panel/);
   assert.match(page, /settings-window/);
+  assert.match(page, /selah-theme/);
+  assert.match(page, /themePreference/);
+  assert.match(page, /selah-read-original-definition/);
+  assert.match(page, /Definition\. \$\{entry\.meaning\}/);
   assert.match(page, /visibleVoices/);
   assert.match(page, /readingSession/);
   assert.match(page, /toggleCommentaryReading/);
@@ -152,4 +159,6 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.doesNotMatch(page, /recentWords|RECENT WORDS/);
   assert.match(page, /id === sorted\[0\] - 1/);
   assert.doesNotMatch(page, /bible-api\.com/);
+  assert.match(styles, /:root\[data-theme="dark"\]/);
+  assert.match(styles, /\.study-panel \{ position: sticky; top: 72px;/);
 });

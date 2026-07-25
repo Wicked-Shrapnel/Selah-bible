@@ -8,6 +8,7 @@ type Picker = "books" | "chapters" | null;
 type StudyTab = "commentary" | "lexicon" | "notes";
 type CommentaryView = "expository" | "historical";
 type HighlightColor = "gold" | "sage" | "blue" | "rose";
+type ThemePreference = "system" | "light" | "dark";
 type LexiconEntry = { word: string; transliteration: string; pronunciation: string; spoken: string; number: string; meaning: string; lang: "he-IL" | "el-GR" };
 type OriginalWordToken = { text: string; strongs?: string[] };
 type OriginalLanguageBook = { source: string; verses: Record<string, OriginalWordToken[]> };
@@ -208,6 +209,8 @@ export default function Home() {
   const [mobileStudyOpen, setMobileStudyOpen] = useState(false);
   const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
   const [audioDockCollapsed, setAudioDockCollapsed] = useState(false);
+  const [themePreference, setThemePreference] = useState<ThemePreference>("system");
+  const [readOriginalDefinition, setReadOriginalDefinition] = useState(false);
   const [commentaryData, setCommentaryData] = useState<CommentaryChapter | null>(null);
   const [commentaryStatus, setCommentaryStatus] = useState<"loading" | "ready" | "error">("loading");
   const [bookmark, setBookmark] = useState<SavedPlace | null>(null);
@@ -263,6 +266,8 @@ export default function Home() {
       const savedPlace = localStorage.getItem("selah-reading-place-v1");
       const savedHighlightColor = localStorage.getItem("selah-highlight-color") as HighlightColor | null;
       const savedDockCollapsed = localStorage.getItem("selah-audio-dock-collapsed");
+      const savedTheme = localStorage.getItem("selah-theme") as ThemePreference | null;
+      const savedOriginalDefinition = localStorage.getItem("selah-read-original-definition");
       if (savedHighlights) {
         const parsed = JSON.parse(savedHighlights) as string[] | Record<string, HighlightColor>;
         setHighlights(Array.isArray(parsed) ? Object.fromEntries(parsed.map((key) => [key, "gold" as HighlightColor])) : parsed);
@@ -270,6 +275,8 @@ export default function Home() {
       if (savedNotes) setNotes(JSON.parse(savedNotes));
       if (savedHighlightColor && ["gold", "sage", "blue", "rose"].includes(savedHighlightColor)) setPreferredHighlightColor(savedHighlightColor);
       if (savedDockCollapsed === "true") setAudioDockCollapsed(true);
+      if (savedTheme && ["system", "light", "dark"].includes(savedTheme)) setThemePreference(savedTheme);
+      if (savedOriginalDefinition === "true") setReadOriginalDefinition(true);
       if (savedPlace) {
         const parsed = JSON.parse(savedPlace) as SavedPlace;
         const savedBook = books.find((book) => book.name === parsed.book);
@@ -281,6 +288,17 @@ export default function Home() {
       }
     });
   }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const applyTheme = () => {
+      const resolvedTheme = themePreference === "system" ? (media.matches ? "dark" : "light") : themePreference;
+      document.documentElement.dataset.theme = resolvedTheme;
+    };
+    applyTheme();
+    if (themePreference === "system") media.addEventListener("change", applyTheme);
+    return () => media.removeEventListener("change", applyTheme);
+  }, [themePreference]);
 
   useEffect(() => {
     const closeMenusOnOutsideClick = (event: PointerEvent) => {
@@ -738,6 +756,13 @@ export default function Home() {
       if (languageVoice) utterance.voice = languageVoice;
       else if (fallbackVoice) utterance.voice = fallbackVoice;
       window.speechSynthesis.speak(utterance);
+      if (readOriginalDefinition && entry.meaning) {
+        const definition = new SpeechSynthesisUtterance(`Definition. ${entry.meaning}`);
+        definition.lang = "en-US";
+        definition.rate = Math.min(rate, 0.92);
+        if (fallbackVoice) definition.voice = fallbackVoice;
+        window.speechSynthesis.speak(definition);
+      }
     }, 90);
   };
 
@@ -755,6 +780,13 @@ export default function Home() {
         if (languageVoice) utterance.voice = languageVoice;
         else if (fallbackVoice) utterance.voice = fallbackVoice;
         window.speechSynthesis.speak(utterance);
+        if (readOriginalDefinition && entry.meaning) {
+          const definition = new SpeechSynthesisUtterance(`Definition. ${entry.meaning}`);
+          definition.lang = "en-US";
+          definition.rate = Math.min(rate, 0.92);
+          if (fallbackVoice) definition.voice = fallbackVoice;
+          window.speechSynthesis.speak(definition);
+        }
       });
     }, 90);
   };
@@ -1057,7 +1089,7 @@ export default function Home() {
       {audioSettingsOpen && (
         <section className="settings-window" aria-modal="true" role="dialog" aria-label="App settings">
           <div className="settings-window-heading">
-            <div><span>SETTINGS</span><strong>Read aloud</strong></div>
+            <div><span>SETTINGS</span><strong>Reading preferences</strong></div>
             <button onClick={() => setAudioSettingsOpen(false)} aria-label="Close settings">X</button>
           </div>
           <div className="settings-window-body">
@@ -1084,12 +1116,48 @@ export default function Home() {
                 </div>
               </details>
             </div>
-            <div className="settings-card settings-card-muted">
-              <div className="settings-card-heading">
-                <span>SAVED AUDIO</span>
-                <strong>{savedAudioChapters.has(chapterAudioKey) ? "Available for this chapter" : "No saved audio yet"}</strong>
+            <div className="settings-side-stack">
+              <div className="settings-card">
+                <div className="settings-card-heading">
+                  <span>APPEARANCE</span>
+                  <strong>Page theme</strong>
+                </div>
+                <label>
+                  <span>Theme</span>
+                  <select value={themePreference} onChange={(event) => {
+                    const nextTheme = event.target.value as ThemePreference;
+                    setThemePreference(nextTheme);
+                    localStorage.setItem("selah-theme", nextTheme);
+                  }}>
+                    <option value="system">Follow device</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </select>
+                </label>
               </div>
-              <p>No API key is required. Selah uses installed browser voices first, and will automatically use saved chapter audio files when you add them under <code>public/audio</code>.</p>
+              <div className="settings-card">
+                <div className="settings-card-heading">
+                  <span>ORIGINAL LANGUAGE</span>
+                  <strong>Pronunciation</strong>
+                </div>
+                <label className="settings-checkbox">
+                  <span>Definition</span>
+                  <input type="checkbox" checked={readOriginalDefinition} onChange={(event) => {
+                    const enabled = event.target.checked;
+                    setReadOriginalDefinition(enabled);
+                    localStorage.setItem("selah-read-original-definition", String(enabled));
+                  }} />
+                  <strong>{readOriginalDefinition ? "On" : "Off"}</strong>
+                </label>
+                <p className="settings-help">When enabled, Selah reads the English definition immediately after pronouncing the Hebrew or Greek word.</p>
+              </div>
+              <div className="settings-card settings-card-muted">
+                <div className="settings-card-heading">
+                  <span>SAVED AUDIO</span>
+                  <strong>{savedAudioChapters.has(chapterAudioKey) ? "Available for this chapter" : "No saved audio yet"}</strong>
+                </div>
+                <p>No API key is required. Selah uses installed browser voices first, and will automatically use saved chapter audio files when you add them under <code>public/audio</code>.</p>
+              </div>
             </div>
           </div>
         </section>
@@ -1476,7 +1544,7 @@ export default function Home() {
                           </div>
                           <p><i>{entry.transliteration}</i>{entry.pronunciation ? ` · ${entry.pronunciation}` : ""}</p>
                           <p>{entry.meaning}</p>
-                          <button onClick={() => pronounceOriginal(entry)}>▶ Hear {entry.transliteration || "pronunciation"}</button>
+                          <button onClick={() => pronounceOriginal(entry)}>▶ Hear {entry.transliteration || "pronunciation"}{readOriginalDefinition ? " + definition" : ""}</button>
                         </div>
                       ))}
                     </div>
