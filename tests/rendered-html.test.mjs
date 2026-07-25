@@ -137,7 +137,8 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /selah-theme/);
   assert.match(page, /themePreference/);
   assert.match(page, /selah-read-original-definition/);
-  assert.match(page, /Definition\. \$\{entry\.meaning\}/);
+  assert.match(page, /new SpeechSynthesisUtterance\(entry\.meaning\)/);
+  assert.doesNotMatch(page, /Definition\. \$\{entry\.meaning\}/);
   assert.match(page, /visibleVoices/);
   assert.match(page, /readingSession/);
   assert.match(page, /toggleCommentaryReading/);

@@ -757,7 +757,7 @@ export default function Home() {
       else if (fallbackVoice) utterance.voice = fallbackVoice;
       window.speechSynthesis.speak(utterance);
       if (readOriginalDefinition && entry.meaning) {
-        const definition = new SpeechSynthesisUtterance(`Definition. ${entry.meaning}`);
+        const definition = new SpeechSynthesisUtterance(entry.meaning);
         definition.lang = "en-US";
         definition.rate = Math.min(rate, 0.92);
         if (fallbackVoice) definition.voice = fallbackVoice;
@@ -781,7 +781,7 @@ export default function Home() {
         else if (fallbackVoice) utterance.voice = fallbackVoice;
         window.speechSynthesis.speak(utterance);
         if (readOriginalDefinition && entry.meaning) {
-          const definition = new SpeechSynthesisUtterance(`Definition. ${entry.meaning}`);
+          const definition = new SpeechSynthesisUtterance(entry.meaning);
           definition.lang = "en-US";
           definition.rate = Math.min(rate, 0.92);
           if (fallbackVoice) definition.voice = fallbackVoice;
