@@ -112,6 +112,12 @@ function chapterAudioBase(book: string, chapterNumber: number) {
   return `/audio/${bookSlug(book)}/${chapterNumber}`;
 }
 
+function formatNoteReference(book: string, chapterNumber: number, verseIds: number[]) {
+  const sorted = [...verseIds].sort((a, b) => a - b);
+  if (sorted.length > 2) return `${book} ${chapterNumber}:${sorted[0]}–${sorted[sorted.length - 1]}`;
+  return `${book} ${chapterNumber}:${sorted.join(", ")}`;
+}
+
 export default function Home() {
   const [selectedBook, setSelectedBook] = useState(books[0]);
   const [chapter, setChapter] = useState(1);
@@ -648,16 +654,13 @@ export default function Home() {
   const selectedSectionIds = [...selectedForHighlight].sort((a, b) => a - b);
   const sectionNoteKey = `${passageKey}-section-${selectedSectionIds.join("_")}`;
   const activeNoteKey = selectedSectionIds.length > 1 ? sectionNoteKey : verseKey(selectedSectionIds[0] || selectedVerse);
-  const noteReference = selectedSectionIds.length > 1
-    ? `${selectedBook.name} ${chapter}:${selectedSectionIds.join(", ")}`
-    : `${selectedBook.name} ${chapter}:${selectedSectionIds[0] || selectedVerse}`;
+  const noteReference = formatNoteReference(selectedBook.name, chapter, selectedSectionIds.length ? selectedSectionIds : [selectedVerse]);
   const sectionNotes = Object.entries(notes)
     .filter(([key, value]) => key.startsWith(`${passageKey}-section-`) && Boolean(value))
-    .map(([key, value]) => ({
-      key,
-      reference: `${selectedBook.name} ${chapter}:${key.split("-section-")[1].split("_").join(", ")}`,
-      value,
-    }));
+    .map(([key, value]) => {
+      const verseIds = key.split("-section-")[1].split("_").map(Number);
+      return { key, reference: formatNoteReference(selectedBook.name, chapter, verseIds), value };
+    });
   const savedNoteVerseIds = new Set<number>([
     ...chapterNotes.map((verse) => verse.id),
     ...sectionNotes.flatMap((note) => note.key.split("-section-")[1].split("_").map(Number)),
@@ -869,7 +872,7 @@ export default function Home() {
                       <div className="inline-note-editor section-note-editor">
                         <div className="inline-note-heading">
                           <div>
-                            <strong>Note on {selectedBook.name} {chapter}:{inlineSectionNoteIds[0]}–{inlineSectionNoteIds.at(-1)}</strong>
+                            <strong>Note on {formatNoteReference(selectedBook.name, chapter, inlineSectionNoteIds)}</strong>
                             <span>{inlineSectionVerses.map((item) => `${item.id}. ${item.text}`).join(" ")}</span>
                           </div>
                           <div className="inline-note-actions">
