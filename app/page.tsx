@@ -689,6 +689,19 @@ export default function Home() {
             Chapter {chapter} <span>⌄</span>
           </button>
           <button className="chapter-arrow" onClick={() => goToAdjacentChapter(1)} aria-label="Next chapter">›</button>
+          {picker === "chapters" && (
+            <section className="chapter-dropdown" aria-label={`Chapters in ${selectedBook.name}`}>
+              <div className="chapter-dropdown-heading">
+                <div><strong>Choose a chapter</strong><span>{selectedBook.name}</span></div>
+                <button onClick={() => setPicker(null)} aria-label="Close chapter menu">×</button>
+              </div>
+              <div className="chapter-grid">
+                {Array.from({ length: selectedBook.chapters }, (_, index) => index + 1).map((number) => (
+                  <button key={number} className={number === chapter ? "selected" : ""} onClick={() => { setChapter(number); setPicker(null); }}>{number}</button>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
         <div className="header-actions">
@@ -697,12 +710,10 @@ export default function Home() {
         </div>
       </header>
 
-      {picker && (
+      {picker === "books" && (
         <>
           <button className="picker-backdrop" onClick={() => setPicker(null)} aria-label="Close passage picker" />
-          <section className={`passage-menu ${picker === "books" ? "book-menu" : "chapter-menu"}`} aria-label={picker === "books" ? "Books of the Bible" : `Chapters in ${selectedBook.name}`}>
-            {picker === "books" ? (
-              <>
+          <section className="passage-menu book-menu" aria-label="Books of the Bible">
                 <div className="passage-menu-heading">
                   <div><span>BIBLE</span><h2>Choose a book</h2></div>
                   <button onClick={() => setPicker(null)} aria-label="Close">×</button>
@@ -723,21 +734,6 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-              </>
-            ) : (
-              <>
-                <div className="chapter-menu-heading">
-                  <button onClick={() => setPicker("books")} aria-label="Back to books">←</button>
-                  <div><strong>CHAPTER</strong><span>{selectedBook.name}</span></div>
-                  <button onClick={() => setPicker(null)}>Cancel</button>
-                </div>
-                <div className="chapter-grid">
-                  {Array.from({ length: selectedBook.chapters }, (_, index) => index + 1).map((number) => (
-                    <button key={number} className={number === chapter ? "selected" : ""} onClick={() => { setChapter(number); setPicker(null); }}>{number}</button>
-                  ))}
-                </div>
-              </>
-            )}
           </section>
         </>
       )}
