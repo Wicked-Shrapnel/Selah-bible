@@ -276,10 +276,11 @@ export default function Home() {
     const closeMenusOnOutsideClick = (event: PointerEvent) => {
       const target = event.target as Node;
       if (picker === "chapters" && !passagePickerRef.current?.contains(target)) setPicker(null);
+      if (audioSettingsOpen && !savedPanelRef.current?.contains(target)) setAudioSettingsOpen(false);
     };
     document.addEventListener("pointerdown", closeMenusOnOutsideClick);
     return () => document.removeEventListener("pointerdown", closeMenusOnOutsideClick);
-  }, [picker]);
+  }, [audioSettingsOpen, picker]);
 
   useEffect(() => {
     if (!("speechSynthesis" in window)) return;
@@ -986,7 +987,37 @@ export default function Home() {
 
         <div className="header-actions" ref={savedPanelRef}>
           <span className="translation-badge">KJV</span>
-          <button className="saved-library-button" onClick={() => setSavedPanelOpen((current) => !current)} aria-expanded={savedPanelOpen} aria-label="Open saved highlights, notes, and reading place">
+          <button className="settings-cog-button" onClick={() => setAudioSettingsOpen((current) => !current)} aria-expanded={audioSettingsOpen} aria-label="Open app settings" title="Settings">
+            <span aria-hidden="true">&#9881;</span>
+          </button>
+          {audioSettingsOpen && (
+            <div className="site-settings-popover" role="dialog" aria-label="App settings">
+              <div className="settings-popover-heading">
+                <span>SETTINGS</span>
+                <strong>Read aloud</strong>
+              </div>
+              <label><span>Voice</span><select value={voiceName || "local"} onChange={(event) => { const value = event.target.value; const next = value === "local" ? bestVoice(visibleVoices)?.name || "" : value; setVoiceName(next); localStorage.setItem("selah-voice", next); }}>
+                <option value="local">Installed browser voice{voiceName ? ` - ${voiceName}` : ""}</option>
+                <optgroup label="Shown voices">{visibleVoices.map((voice) => <option key={voice.name} value={voice.name}>{voice.name}{voice.name.toLowerCase().includes("microsoft david") ? " - default" : ""}</option>)}</optgroup>
+              </select></label>
+              <details className="voice-picker-panel">
+                <summary><span>Shown voices</span><strong>{enabledVoiceNames.length || sortedVoices.length}</strong></summary>
+                <div className="voice-toggle-list">
+                  {sortedVoices.map((voice) => (
+                    <label key={voice.name} className="voice-toggle-row">
+                      <input type="checkbox" checked={enabledVoiceSet.has(voice.name)} onChange={() => toggleVoiceVisibility(voice.name)} />
+                      <span>{voice.name}</span>
+                      <small>{voice.localService ? "Local" : "Browser"}</small>
+                    </label>
+                  ))}
+                </div>
+              </details>
+              <p className="voice-availability">No API key is required. Selah uses installed browser voices first, and will automatically use saved chapter audio files when you add them under <code>public/audio</code>.</p>
+              <p className="voice-availability">{savedAudioChapters.has(chapterAudioKey) ? "Saved audio is available for this chapter." : "No saved audio file found for this chapter yet."}</p>
+              <label><span>Speed</span><input type="range" min="0.7" max="1.25" step="0.05" value={rate} onChange={(event) => setRate(Number(event.target.value))} /><strong>{rate.toFixed(2)}x</strong></label>
+            </div>
+          )}
+          <button className="saved-library-button" onClick={() => { setAudioSettingsOpen(false); setSavedPanelOpen((current) => !current); }} aria-expanded={savedPanelOpen} aria-label="Open saved highlights, notes, and reading place">
             <span aria-hidden="true">⌑</span> Saved {savedCount > 0 && <small>{savedCount}</small>}
           </button>
         </div>
@@ -1401,37 +1432,13 @@ export default function Home() {
         <button onClick={() => goToAdjacentChapter(1)} disabled={!hasNextChapter} aria-label="Next chapter" title="Next chapter">›</button>
       </nav>
 
-      <section className={`audio-dock ${audioSettingsOpen ? "settings-open" : ""} ${audioDockCollapsed ? "collapsed" : ""}`} aria-label="Read aloud controls">
-        {audioSettingsOpen && !audioDockCollapsed && (
-          <div className="audio-settings-popover">
-            <label><span>Voice</span><select value={voiceName || "local"} onChange={(event) => { const value = event.target.value; const next = value === "local" ? bestVoice(visibleVoices)?.name || "" : value; setVoiceName(next); localStorage.setItem("selah-voice", next); }}>
-              <option value="local">Installed browser voice{voiceName ? ` · ${voiceName}` : ""}</option>
-              <optgroup label="Shown voices">{visibleVoices.map((voice) => <option key={voice.name} value={voice.name}>{voice.name}{voice.name.toLowerCase().includes("microsoft david") ? " · default" : ""}</option>)}</optgroup>
-            </select></label>
-            <details className="voice-picker-panel">
-              <summary><span>Shown voices</span><strong>{enabledVoiceNames.length || sortedVoices.length}</strong></summary>
-              <div className="voice-toggle-list">
-                {sortedVoices.map((voice) => (
-                  <label key={voice.name} className="voice-toggle-row">
-                    <input type="checkbox" checked={enabledVoiceSet.has(voice.name)} onChange={() => toggleVoiceVisibility(voice.name)} />
-                    <span>{voice.name}</span>
-                    <small>{voice.localService ? "Local" : "Browser"}</small>
-                  </label>
-                ))}
-              </div>
-            </details>
-            <p className="voice-availability">No API key is required. Selah uses installed browser voices first, and will automatically use saved chapter audio files when you add them under <code>public/audio</code>.</p>
-            <p className="voice-availability">{savedAudioChapters.has(chapterAudioKey) ? "Saved audio is available for this chapter." : "No saved audio file found for this chapter yet."}</p>
-            <label><span>Speed</span><input type="range" min="0.7" max="1.25" step="0.05" value={rate} onChange={(event) => setRate(Number(event.target.value))} /><strong>{rate.toFixed(2)}×</strong></label>
-          </div>
-        )}
+      <section className={`audio-dock ${audioDockCollapsed ? "collapsed" : ""}`} aria-label="Read aloud controls">
         {!audioDockCollapsed && <div className="now-reading"><span className="audio-pulse">◖</span><div><small>{isPaused ? "PAUSED" : isReading ? "READING" : "READ ALOUD"}</small><strong title={activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}>{activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}</strong></div></div>}
         <div className="transport">
           <button className="skip-button" aria-label="Previous verse" onClick={() => jumpToVerse(Math.max(verses[0]?.id || 1, (activeVerse || selectedVerse) - 1))}>‹<span>|</span></button>
           {!isReading ? <button className="play-button" onClick={() => startReading()} aria-label="Start read aloud">▶</button> : <button className="play-button" onClick={togglePause} aria-label={isPaused ? "Resume read aloud" : "Pause read aloud"}>{isPaused ? "▶" : "Ⅱ"}</button>}
           <button className="skip-button" aria-label="Next verse" onClick={() => jumpToVerse(Math.min(verses.at(-1)?.id || 1, (activeVerse || selectedVerse) + 1))}><span>|</span>›</button>
         </div>
-        {!audioDockCollapsed && <button className="audio-settings-button" onClick={() => setAudioSettingsOpen(!audioSettingsOpen)} aria-label="Audio voice and speed settings">•••</button>}
         <button className="audio-collapse-button" onClick={() => { const next = !audioDockCollapsed; setAudioDockCollapsed(next); localStorage.setItem("selah-audio-dock-collapsed", String(next)); setAudioSettingsOpen(false); }} aria-label={audioDockCollapsed ? "Expand read aloud controls" : "Collapse read aloud controls"}>{audioDockCollapsed ? "+" : "−"}</button>
       </section>
     </main>

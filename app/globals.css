@@ -37,6 +37,20 @@ button, select { cursor: pointer; }
 .passage-picker .divider { width: 1px; height: 20px; background: var(--line); }
 .header-actions { position: relative; justify-self: end; display: flex; align-items: center; gap: 9px; }
 .translation-badge { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--sage); background: var(--white); font-size: 11px; font-weight: 800; }
+.settings-cog-button { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #cbd7d0; border-radius: 50%; color: var(--sage); background: var(--white); font-size: 17px; line-height: 1; }
+.settings-cog-button:hover, .settings-cog-button[aria-expanded="true"] { color: white; border-color: var(--sage); background: var(--sage); }
+.site-settings-popover { position: absolute; z-index: 56; top: calc(100% + 12px); right: 0; width: min(340px, calc(100vw - 24px)); padding: 15px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: var(--white); box-shadow: 0 18px 50px rgba(29,35,30,.22); text-align: left; }
+.site-settings-popover::before { content: ""; position: absolute; top: -7px; right: 70px; width: 12px; height: 12px; transform: rotate(45deg); border-left: 1px solid var(--line); border-top: 1px solid var(--line); background: var(--white); }
+.settings-popover-heading { margin-bottom: 12px; padding-bottom: 11px; border-bottom: 1px solid var(--line); }
+.settings-popover-heading span, .settings-popover-heading strong { display: block; }
+.settings-popover-heading span { color: #a18d57; font-size: 8px; font-weight: 850; letter-spacing: .15em; }
+.settings-popover-heading strong { margin-top: 3px; font: 700 19px Georgia, serif; }
+.site-settings-popover label { display: grid; grid-template-columns: 54px 1fr 38px; align-items: center; gap: 8px; }
+.site-settings-popover label + label { margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--line); }
+.site-settings-popover label > span { color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.site-settings-popover select { grid-column: 2 / -1; width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 6px; padding: 6px; background: white; font-size: 10px; }
+.site-settings-popover input { accent-color: var(--sage); width: 100%; }
+.site-settings-popover > label strong { font-size: 9px; }
 .saved-library-button { height: 34px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid #cbd7d0; border-radius: 9px; color: var(--sage); background: var(--white); font-size: 10px; font-weight: 850; }
 .saved-library-button > span { font-size: 15px; }
 .saved-library-button small { min-width: 17px; height: 17px; display: grid; place-items: center; padding: 0 4px; border-radius: 999px; color: white; background: var(--sage); font-size: 8px; }
@@ -333,7 +347,7 @@ button, select { cursor: pointer; }
 .floating-chapter-navigation button:hover { color: white; border-color: var(--sage); background: var(--sage); }
 .floating-chapter-navigation button:disabled { opacity: .35; cursor: default; }
 
-.audio-dock { position: fixed; z-index: 35; left: 20px; bottom: 15px; width: min(420px, calc(100vw - 30px)); height: 56px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 8px; padding: 7px 9px 7px 10px; color: white; border: 1px solid rgba(255,255,255,.14); border-radius: 15px; background: var(--sage-dark); box-shadow: 0 14px 38px rgba(27,47,39,.25); transition: width .2s ease; }
+.audio-dock { position: fixed; z-index: 35; left: 20px; bottom: 15px; width: min(380px, calc(100vw - 30px)); height: 56px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 7px 9px 7px 10px; color: white; border: 1px solid rgba(255,255,255,.14); border-radius: 15px; background: var(--sage-dark); box-shadow: 0 14px 38px rgba(27,47,39,.25); transition: width .2s ease; }
 .audio-dock.collapsed { width: auto; grid-template-columns: auto auto; padding-left: 9px; }
 .now-reading { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .audio-pulse { width: 32px; height: 32px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 9px; color: var(--sage); background: #e9dfbb; }
@@ -360,8 +374,8 @@ button, select { cursor: pointer; }
 .voice-picker-panel summary span { color: var(--sage); font-size: 10px; }
 .voice-picker-panel summary strong { min-width: 24px; padding: 3px 6px; border-radius: 99px; color: var(--white); background: var(--sage); text-align: center; }
 .voice-toggle-list { max-height: 150px; margin-top: 9px; padding-right: 3px; overflow: auto; }
-.audio-settings-popover .voice-toggle-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 0; }
-.audio-settings-popover .voice-toggle-row input { width: 14px; height: 14px; }
+.audio-settings-popover .voice-toggle-row, .site-settings-popover .voice-toggle-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 0; }
+.audio-settings-popover .voice-toggle-row input, .site-settings-popover .voice-toggle-row input { width: 14px; height: 14px; }
 .voice-toggle-row span { overflow: hidden; color: var(--ink); font-size: 10px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; text-transform: none; }
 .voice-toggle-row small { color: var(--muted); font-size: 8px; font-weight: 800; text-transform: uppercase; }
 .voice-availability { margin: 9px 0 0 62px; color: var(--muted); font: 10px/1.4 Georgia, serif; }
@@ -437,7 +451,7 @@ button, select { cursor: pointer; }
   .book-grid { gap: 2px 5px; }
   .book-grid button { padding: 7px; font-size: 13px; }
   .chapter-grid { grid-template-columns: repeat(5, minmax(48px, 1fr)); padding: 0; }
-  .audio-dock { grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 7px; padding-left: 8px; }
+  .audio-dock { grid-template-columns: minmax(0, 1fr) auto auto; gap: 7px; padding-left: 8px; }
   .audio-dock.collapsed { grid-template-columns: auto auto; }
   .audio-pulse { display: none; }
   .now-reading strong { max-width: 92px; font-size: 11px; }
