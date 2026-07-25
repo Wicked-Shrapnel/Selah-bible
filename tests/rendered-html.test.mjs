@@ -87,6 +87,10 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /audioDockCollapsed/);
   assert.match(page, /utterance\.onboundary/);
   assert.match(page, /commentary-spoken-word/);
+  assert.match(page, /Historical Context/);
+  assert.match(page, /Cambridge Bible for Schools and Colleges/);
+  assert.match(page, /historicalCommentaryUrl/);
+  assert.match(page, /future side-by-side media view/);
   assert.match(page, /wordStudyMode/);
   assert.doesNotMatch(page, /recentWords|RECENT WORDS/);
   assert.match(page, /id === sorted\[0\] - 1/);

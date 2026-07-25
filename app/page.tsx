@@ -6,6 +6,7 @@ type Verse = { id: number; reference: string; text: string };
 type Book = { name: string; chapters: number; testament: "Old Testament" | "New Testament" };
 type Picker = "books" | "chapters" | null;
 type StudyTab = "commentary" | "lexicon" | "notes";
+type CommentaryView = "expository" | "historical";
 type HighlightColor = "gold" | "sage" | "blue" | "rose";
 type LexiconEntry = { word: string; transliteration: string; pronunciation: string; spoken: string; number: string; meaning: string; lang: "he-IL" | "el-GR" };
 type SavedAudioManifest = { chapters: string[] };
@@ -109,6 +110,10 @@ function bookSlug(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
+function bibleHubBookSlug(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
 function chapterAudioBase(book: string, chapterNumber: number) {
   return `/audio/${bookSlug(book)}/${chapterNumber}`;
 }
@@ -159,6 +164,7 @@ export default function Home() {
   const [inlineNoteDraft, setInlineNoteDraft] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [studyTab, setStudyTab] = useState<StudyTab>("commentary");
+  const [commentaryView, setCommentaryView] = useState<CommentaryView>("expository");
   const [studyCollapsed, setStudyCollapsed] = useState(false);
   const [mobileStudyOpen, setMobileStudyOpen] = useState(false);
   const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
@@ -699,6 +705,7 @@ export default function Home() {
       || entries[0];
   }, [commentaryData, selectedVerse]);
   const commentaryTokens = useMemo(() => activeCommentaryEntry?.text.split(/(\s+)/) || [], [activeCommentaryEntry]);
+  const historicalCommentaryUrl = `https://biblehub.com/commentaries/cambridge/${bibleHubBookSlug(selectedBook.name)}/${chapter}.htm`;
   const chapterNotes = verses.filter((verse) => Boolean(notes[verseKey(verse.id)]));
   const selectedSectionIds = [...selectedForHighlight].sort((a, b) => a - b);
   const sectionNoteKey = `${passageKey}-section-${selectedSectionIds.join("_")}`;
@@ -1029,7 +1036,66 @@ export default function Home() {
               {studyTab === "commentary" ? (
                 <div className="study-content">
                   <div className="study-reference"><span>{selected?.reference || `${selectedBook.name} ${chapter}`}</span><small>Public domain</small></div>
-                  {commentaryStatus === "loading" ? (
+                  <div className="commentary-source-tabs" role="tablist" aria-label="Commentary source">
+                    <button
+                      className={commentaryView === "expository" ? "active" : ""}
+                      onClick={() => setCommentaryView("expository")}
+                      role="tab"
+                      aria-selected={commentaryView === "expository"}
+                    >
+                      <span>Matthew Henry</span>
+                      <small>Devotional &amp; expository</small>
+                    </button>
+                    <button
+                      className={commentaryView === "historical" ? "active historical" : "historical"}
+                      onClick={() => {
+                        if (isReadingCommentary) stopReading();
+                        setCommentaryView("historical");
+                      }}
+                      role="tab"
+                      aria-selected={commentaryView === "historical"}
+                    >
+                      <span>Historical Context</span>
+                      <small>Cambridge</small>
+                    </button>
+                  </div>
+                  {commentaryView === "historical" ? (
+                    <div className="commentary-card historical-commentary-card">
+                      <div className="commentary-card-top">
+                        <span className="card-label">HISTORICAL CONTEXT</span>
+                        <span className="historical-badge">Historically based</span>
+                      </div>
+                      <h2>Cambridge Bible for Schools and Colleges</h2>
+                      <p>
+                        Scholarly background for {selectedBook.name} {chapter}, with historical setting,
+                        literary analysis, original-language observations, outlines, and verse-by-verse notes.
+                      </p>
+                      <div className="historical-source-note">
+                        <strong>Read at the authorized source</strong>
+                        <span>
+                          The available digital transcription is hosted by Bible Hub courtesy of BibleSupport.
+                          It opens separately so the app does not re-publish text licensed to another host.
+                        </span>
+                      </div>
+                      <a className="historical-open-button" href={historicalCommentaryUrl} target="_blank" rel="noreferrer">
+                        Open {selectedBook.name} {chapter} historical commentary ↗
+                      </a>
+                      <div className="commentary-author">
+                        <span>CB</span>
+                        <div>
+                          <strong>Cambridge Bible contributors</strong>
+                          <small>Cambridge University Press · 1878–1922</small>
+                        </div>
+                      </div>
+                      <div className="commentary-media-plan">
+                        <div>
+                          <strong>Maps, plates &amp; diagrams</strong>
+                          <span>Reserved for a future side-by-side media view.</span>
+                        </div>
+                        <small>PLANNED</small>
+                      </div>
+                    </div>
+                  ) : commentaryStatus === "loading" ? (
                     <div className="commentary-state">Loading trusted commentary…</div>
                   ) : commentaryStatus === "error" ? (
                     <div className="commentary-state">The commentary could not be loaded just now.</div>
