@@ -12,12 +12,23 @@ Read aloud with diverse highlighted.
 Original language panel that allows the user to select individual words and will read and pronounce the word in the original language. 
 
 
+
+<img width="1935" height="888" alt="image" src="https://github.com/user-attachments/assets/390bdfc2-0bc1-4e28-9c1d-ab6322f9fd82" />
+
+
+
+
+
 Future plans:
 Implement a better read aloud voice. 
 Implement a second commentary alongside the first one to aid in the reader understanding historical context. 
 
 
-Quick setup gide
+
+
+
+
+Quick setup guide
 
 1. Install Node.js 22.13.0 or newer.
 2. Unzip the source folder somewhere on your computer.
