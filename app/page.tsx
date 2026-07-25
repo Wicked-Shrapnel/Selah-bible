@@ -5,6 +5,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 type Verse = { id: number; reference: string; text: string };
 type Book = { name: string; chapters: number; testament: "Old Testament" | "New Testament" };
 type Picker = "books" | "chapters" | null;
+type StudyTab = "commentary" | "lexicon" | "notes";
+type HighlightColor = "gold" | "sage" | "blue" | "rose";
+type LexiconEntry = { word: string; transliteration: string; pronunciation: string; number: string; meaning: string; lang: "he-IL" | "el-GR" };
 
 const books: Book[] = [
   ["Genesis",50,"Old Testament"],["Exodus",40,"Old Testament"],["Leviticus",27,"Old Testament"],["Numbers",36,"Old Testament"],["Deuteronomy",34,"Old Testament"],
@@ -63,16 +66,36 @@ const commentary = {
   text: "The chapter presents creation as ordered, purposeful, and good. Each movement begins with the divine word and leads from unformed emptiness toward a world prepared for life.",
 };
 
-const lexicon = [
-  { word: "בְּרֵאשִׁית", transliteration: "bərēʾšît", number: "H7225", meaning: "beginning, first, chief" },
-  { word: "אֱלֹהִים", transliteration: "ʾĕlōhîm", number: "H430", meaning: "God, divine one" },
-  { word: "בָּרָא", transliteration: "bārāʾ", number: "H1254", meaning: "to create, shape" },
+const hebrewLexicon: LexiconEntry[] = [
+  { word: "בְּרֵאשִׁית", transliteration: "bərēʾšît", pronunciation: "beh-ray-SHEET", number: "H7225", meaning: "beginning, first, chief", lang: "he-IL" },
+  { word: "אֱלֹהִים", transliteration: "ʾĕlōhîm", pronunciation: "el-oh-HEEM", number: "H430", meaning: "God, divine one", lang: "he-IL" },
+  { word: "בָּרָא", transliteration: "bārāʾ", pronunciation: "bah-RAH", number: "H1254", meaning: "to create, shape", lang: "he-IL" },
+];
+
+const greekLexicon: LexiconEntry[] = [
+  { word: "ἀρχή", transliteration: "archē", pronunciation: "ar-KHAY", number: "G746", meaning: "beginning, origin, first cause", lang: "el-GR" },
+  { word: "θεός", transliteration: "theos", pronunciation: "theh-OSS", number: "G2316", meaning: "God, deity", lang: "el-GR" },
+  { word: "λόγος", transliteration: "logos", pronunciation: "LOH-goss", number: "G3056", meaning: "word, message, reason", lang: "el-GR" },
 ];
 
 function bestVoice(voices: SpeechSynthesisVoice[]) {
   const english = voices.filter((voice) => voice.lang.toLowerCase().startsWith("en"));
-  const preferred = ["natural", "neural", "samantha", "daniel", "aria", "guy", "google us english"];
+  const david = english.find((voice) => voice.name.toLowerCase().includes("microsoft david"));
+  if (david) return david;
+  const preferred = ["microsoft ava", "microsoft andrew", "microsoft emma", "microsoft brian", "natural", "neural", "samantha", "daniel", "aria", "guy", "google us english"];
   return english.find((voice) => preferred.some((name) => voice.name.toLowerCase().includes(name))) || english.find((voice) => voice.localService) || english[0] || voices[0];
+}
+
+function voiceRank(voice: SpeechSynthesisVoice) {
+  const name = voice.name.toLowerCase();
+  if (name.includes("microsoft david")) return 0;
+  if (name.includes("microsoft ava")) return 1;
+  if (name.includes("microsoft andrew")) return 2;
+  if (name.includes("microsoft emma")) return 3;
+  if (name.includes("microsoft brian")) return 4;
+  if (name.includes("natural") || name.includes("neural")) return 5;
+  if (name.includes("microsoft")) return 6;
+  return 10;
 }
 
 export default function Home() {
@@ -89,9 +112,11 @@ export default function Home() {
   const [rate, setRate] = useState(0.92);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceName, setVoiceName] = useState("");
-  const [highlighted, setHighlighted] = useState<string[]>([]);
+  const [highlights, setHighlights] = useState<Record<string, HighlightColor>>({});
+  const [selectedForHighlight, setSelectedForHighlight] = useState<number[]>([]);
+  const [selectedWord, setSelectedWord] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
-  const [studyTab, setStudyTab] = useState<"commentary" | "lexicon">("commentary");
+  const [studyTab, setStudyTab] = useState<StudyTab>("commentary");
   const [studyCollapsed, setStudyCollapsed] = useState(false);
   const [mobileStudyOpen, setMobileStudyOpen] = useState(false);
   const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
@@ -102,10 +127,15 @@ export default function Home() {
   const selected = verses.find((verse) => verse.id === selectedVerse) || verses[0];
 
   useEffect(() => {
-    const savedHighlights = localStorage.getItem("selah-highlights-v2");
-    const savedNotes = localStorage.getItem("selah-notes-v2");
-    if (savedHighlights) setHighlighted(JSON.parse(savedHighlights));
-    if (savedNotes) setNotes(JSON.parse(savedNotes));
+    queueMicrotask(() => {
+      const savedHighlights = localStorage.getItem("selah-highlights-v2");
+      const savedNotes = localStorage.getItem("selah-notes-v2");
+      if (savedHighlights) {
+        const parsed = JSON.parse(savedHighlights) as string[] | Record<string, HighlightColor>;
+        setHighlights(Array.isArray(parsed) ? Object.fromEntries(parsed.map((key) => [key, "gold" as HighlightColor])) : parsed);
+      }
+      if (savedNotes) setNotes(JSON.parse(savedNotes));
+    });
   }, []);
 
   useEffect(() => {
@@ -113,7 +143,8 @@ export default function Home() {
     const loadVoices = () => {
       const available = window.speechSynthesis.getVoices();
       setVoices(available);
-      setVoiceName((current) => current || bestVoice(available)?.name || "");
+      const savedVoice = localStorage.getItem("selah-voice");
+      setVoiceName((current) => current || available.find((voice) => voice.name === savedVoice)?.name || bestVoice(available)?.name || "");
     };
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
@@ -157,10 +188,14 @@ export default function Home() {
         if (!ignore) setIsLoading(false);
       }
     }
-    window.speechSynthesis?.cancel();
-    setIsReading(false);
-    setActiveVerse(null);
-    loadChapter();
+    queueMicrotask(() => {
+      window.speechSynthesis?.cancel();
+      setIsReading(false);
+      setIsPaused(false);
+      setActiveVerse(null);
+      setSelectedForHighlight([]);
+      loadChapter();
+    });
     return () => { ignore = true; };
   }, [selectedBook, chapter]);
 
@@ -172,7 +207,7 @@ export default function Home() {
     setActiveVerse(null);
   }, []);
 
-  const speakVerse = useCallback((index: number) => {
+  const speakVerse = useCallback(function speakAtIndex(index: number) {
     if (!("speechSynthesis" in window) || !verses[index]) {
       setIsReading(false);
       setActiveVerse(null);
@@ -188,7 +223,7 @@ export default function Home() {
     const voice = voices.find((item) => item.name === voiceName) || bestVoice(voices);
     if (voice) utterance.voice = voice;
     utterance.onend = () => {
-      if (!cancelled.current && index + 1 < verses.length) speakVerse(index + 1);
+      if (!cancelled.current && index + 1 < verses.length) speakAtIndex(index + 1);
       else if (!cancelled.current) {
         setIsReading(false);
         setActiveVerse(null);
@@ -234,11 +269,72 @@ export default function Home() {
     setIsPaused(!isPaused);
   };
 
+  const handleVersePlayback = (id: number) => {
+    setSelectedVerse(id);
+    if (activeVerse === id && isReading) togglePause();
+    else startReading(id);
+  };
+
+  const toggleVerseSelection = (id: number) => {
+    setSelectedVerse(id);
+    setSelectedForHighlight((current) => current.includes(id) ? current.filter((verseId) => verseId !== id) : [...current, id]);
+  };
+
+  const applyHighlight = (color?: HighlightColor) => {
+    const next = { ...highlights };
+    selectedForHighlight.forEach((id) => {
+      const key = verseKey(id);
+      if (color) next[key] = color;
+      else delete next[key];
+    });
+    setHighlights(next);
+    localStorage.setItem("selah-highlights-v2", JSON.stringify(next));
+    setSelectedForHighlight([]);
+  };
+
   const toggleHighlight = (id: number) => {
     const key = verseKey(id);
-    const next = highlighted.includes(key) ? highlighted.filter((item) => item !== key) : [...highlighted, key];
-    setHighlighted(next);
+    const next = { ...highlights };
+    if (next[key]) delete next[key];
+    else next[key] = "gold";
+    setHighlights(next);
     localStorage.setItem("selah-highlights-v2", JSON.stringify(next));
+  };
+
+  const selectWord = (word: string, verseId: number) => {
+    const cleaned = word.replace(/[^A-Za-zÀ-ž'-]/g, "");
+    if (!cleaned) return;
+    setSelectedWord(cleaned);
+    setSelectedVerse(verseId);
+    setStudyTab("lexicon");
+    setStudyCollapsed(false);
+    setMobileStudyOpen(true);
+  };
+
+  const pronounceOriginal = (entry: LexiconEntry) => {
+    if (!("speechSynthesis" in window)) return;
+    stopReading();
+    const utterance = new SpeechSynthesisUtterance(entry.word);
+    utterance.lang = entry.lang;
+    utterance.rate = 0.72;
+    const languagePrefix = entry.lang.split("-")[0].toLowerCase();
+    const languageVoice = voices.find((voice) => voice.lang.toLowerCase().startsWith(languagePrefix));
+    if (languageVoice) utterance.voice = languageVoice;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const readOriginalWords = (entries: LexiconEntry[]) => {
+    if (!("speechSynthesis" in window)) return;
+    stopReading();
+    entries.forEach((entry) => {
+      const utterance = new SpeechSynthesisUtterance(entry.word);
+      utterance.lang = entry.lang;
+      utterance.rate = 0.72;
+      const prefix = entry.lang.split("-")[0].toLowerCase();
+      const languageVoice = voices.find((voice) => voice.lang.toLowerCase().startsWith(prefix));
+      if (languageVoice) utterance.voice = languageVoice;
+      window.speechSynthesis.speak(utterance);
+    });
   };
 
   const updateNote = (value: string) => {
@@ -268,6 +364,16 @@ export default function Home() {
 
   const oldTestament = useMemo(() => books.filter((book) => book.testament === "Old Testament"), []);
   const newTestament = useMemo(() => books.filter((book) => book.testament === "New Testament"), []);
+  const sortedVoices = useMemo(() => voices.filter((voice) => voice.lang.toLowerCase().startsWith("en")).sort((a, b) => voiceRank(a) - voiceRank(b) || a.name.localeCompare(b.name)), [voices]);
+  const activeLexicon = selectedBook.testament === "Old Testament" ? hebrewLexicon : greekLexicon;
+  const selectedLookupEntry = useMemo(() => {
+    const word = selectedWord.toLowerCase();
+    if (["beginning", "first", "origin"].includes(word)) return activeLexicon[0];
+    if (["god", "gods", "divine"].includes(word)) return activeLexicon[1];
+    if (["created", "create", "made", "word"].includes(word)) return activeLexicon[2];
+    return undefined;
+  }, [activeLexicon, selectedWord]);
+  const chapterNotes = verses.filter((verse) => Boolean(notes[verseKey(verse.id)]));
   const noteValue = notes[verseKey(selectedVerse)] || "";
 
   return (
@@ -344,19 +450,48 @@ export default function Home() {
               {verses.map((verse) => {
                 const isActive = activeVerse === verse.id;
                 const isSelected = selectedVerse === verse.id;
-                const isMarked = highlighted.includes(verseKey(verse.id));
+                const highlightColor = highlights[verseKey(verse.id)];
+                const isBatchSelected = selectedForHighlight.includes(verse.id);
                 return (
-                  <div key={verse.id} id={`verse-${verse.id}`} className={`verse-row ${isActive ? "reading" : ""} ${isSelected ? "selected" : ""} ${isMarked ? "highlighted" : ""}`} onClick={() => setSelectedVerse(verse.id)}>
-                    <button className="verse-number" aria-label={`Select ${verse.reference}`}>{verse.id}</button>
-                    <p>{verse.text}{isActive && <span className="speaking-indicator" aria-label="Reading this verse"><i /><i /><i /></span>}</p>
+                  <div key={verse.id} id={`verse-${verse.id}`} className={`verse-row ${isActive ? "reading" : ""} ${isSelected ? "selected" : ""} ${highlightColor ? `highlighted highlight-${highlightColor}` : ""} ${isBatchSelected ? "batch-selected" : ""}`}>
+                    <button className="verse-number" onClick={() => toggleVerseSelection(verse.id)} aria-label={`${isBatchSelected ? "Remove" : "Add"} ${verse.reference} ${isBatchSelected ? "from" : "to"} highlight selection`}>{isBatchSelected ? "✓" : verse.id}</button>
+                    <p
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${isActive && isReading ? (isPaused ? "Resume" : "Pause") : "Read"} ${verse.reference}`}
+                      onClick={() => handleVersePlayback(verse.id)}
+                      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") handleVersePlayback(verse.id); }}
+                    >
+                      {verse.text.split(/(\s+)/).map((token, index) => (
+                        /^\s+$/.test(token) ? token : (
+                          <button
+                            key={`${token}-${index}`}
+                            className={`verse-word ${selectedWord && token.replace(/[^A-Za-zÀ-ž'-]/g, "").toLowerCase() === selectedWord.toLowerCase() ? "word-selected" : ""}`}
+                            onClick={(event) => { event.stopPropagation(); selectWord(token, verse.id); }}
+                            aria-label={`Look up ${token.replace(/[^A-Za-zÀ-ž'-]/g, "")}`}
+                          >{token}</button>
+                        )
+                      ))}
+                      {isActive && <span className="speaking-indicator" aria-label={isPaused ? "Reading paused" : "Reading this verse"}><i /><i /><i /></span>}
+                    </p>
                     <div className="verse-actions">
-                      <button onClick={(event) => { event.stopPropagation(); toggleHighlight(verse.id); }} aria-label={`Highlight ${verse.reference}`} className={isMarked ? "active" : ""}>✦</button>
-                      <button onClick={(event) => { event.stopPropagation(); setSelectedVerse(verse.id); setStudyCollapsed(false); }} aria-label={`Add note to ${verse.reference}`}>⌑</button>
-                      <button onClick={(event) => { event.stopPropagation(); startReading(verse.id); }} aria-label={`Read from ${verse.reference}`}>▶</button>
+                      <button onClick={() => toggleHighlight(verse.id)} aria-label={`Highlight ${verse.reference}`} className={highlightColor ? "active" : ""}>✦</button>
+                      <button onClick={() => { setSelectedVerse(verse.id); setStudyTab("notes"); setStudyCollapsed(false); setMobileStudyOpen(true); }} aria-label={`Add note to ${verse.reference}`}>⌑</button>
+                      <button onClick={() => handleVersePlayback(verse.id)} aria-label={`${isActive && isReading ? (isPaused ? "Resume" : "Pause") : "Read from"} ${verse.reference}`}>{isActive && isReading && !isPaused ? "Ⅱ" : "▶"}</button>
                     </div>
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {selectedForHighlight.length > 0 && (
+            <div className="highlight-toolbar" role="toolbar" aria-label="Highlight selected verses">
+              <strong>{selectedForHighlight.length} {selectedForHighlight.length === 1 ? "verse" : "verses"} selected</strong>
+              <span>Highlight:</span>
+              {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => <button key={color} className={`color-swatch ${color}`} onClick={() => applyHighlight(color)} aria-label={`Highlight ${color}`} />)}
+              <button className="clear-highlight" onClick={() => applyHighlight()} aria-label="Remove highlighting">Clear</button>
+              <button className="cancel-selection" onClick={() => setSelectedForHighlight([])} aria-label="Cancel selection">×</button>
             </div>
           )}
 
@@ -373,7 +508,7 @@ export default function Home() {
             <div className="study-rail">
               <button onClick={() => { setStudyCollapsed(false); setStudyTab("commentary"); }} aria-label="Open commentary"><span>¶</span><i>Commentary</i></button>
               <button onClick={() => { setStudyCollapsed(false); setStudyTab("lexicon"); }} aria-label="Open original language"><span>א</span><i>Original language</i></button>
-              <button onClick={() => setStudyCollapsed(false)} aria-label="Open notes"><span>⌑</span><i>Notes</i></button>
+              <button onClick={() => { setStudyCollapsed(false); setStudyTab("notes"); }} aria-label="Open notes"><span>⌑</span><i>Notes</i></button>
             </div>
           ) : (
             <>
@@ -381,6 +516,7 @@ export default function Home() {
               <div className="study-tabs" role="tablist">
                 <button className={studyTab === "commentary" ? "active" : ""} onClick={() => setStudyTab("commentary")} role="tab">Commentary</button>
                 <button className={studyTab === "lexicon" ? "active" : ""} onClick={() => setStudyTab("lexicon")} role="tab">Original language</button>
+                <button className={studyTab === "notes" ? "active" : ""} onClick={() => setStudyTab("notes")} role="tab">Notes</button>
               </div>
               {studyTab === "commentary" ? (
                 <div className="study-content">
@@ -391,18 +527,47 @@ export default function Home() {
                   </div>
                   <div className="cross-references"><h3>Cross references</h3><button><span>John 1:1–3</span><small>In the beginning was the Word…</small></button><button><span>Hebrews 11:3</span><small>Through faith we understand…</small></button></div>
                 </div>
-              ) : (
+              ) : studyTab === "lexicon" ? (
                 <div className="study-content">
-                  <div className="study-reference"><span>Hebrew · {selected?.reference || `${selectedBook.name} ${chapter}`}</span><button aria-label="More lexicon options">•••</button></div>
-                  <p className="lexicon-intro">Explore key words from the opening passage.</p>
-                  <div className="lexicon-list">{lexicon.map((entry) => <button key={entry.number} className="lexicon-card"><span className="hebrew">{entry.word}</span><span className="transliteration">{entry.transliteration}</span><span className="strongs">{entry.number}</span><strong>{entry.meaning}</strong></button>)}</div>
+                  <div className="study-reference"><span>{selectedBook.testament === "Old Testament" ? "Hebrew" : "Greek"} · {selected?.reference || `${selectedBook.name} ${chapter}`}</span><button aria-label="More lexicon options">•••</button></div>
+                  {selectedWord && (
+                    <div className="word-lookup-card">
+                      <span>SELECTED WORD</span>
+                      <h3>{selectedWord}</h3>
+                      {selectedLookupEntry ? (
+                        <div className="lookup-match">
+                          <b>{selectedLookupEntry.word}</b>
+                          <p>{selectedLookupEntry.transliteration} · {selectedLookupEntry.meaning}</p>
+                          <button onClick={() => pronounceOriginal(selectedLookupEntry)}>▶ Hear pronunciation</button>
+                        </div>
+                      ) : <p>Showing key original-language words for this passage. A full concordance connection can map every selected English word.</p>}
+                    </div>
+                  )}
+                  <div className="lexicon-intro-row"><p className="lexicon-intro">Select a word in the passage or hear these key terms.</p><button onClick={() => readOriginalWords(activeLexicon)}>▶ Read aloud</button></div>
+                  <div className="lexicon-list">
+                    {activeLexicon.map((entry) => (
+                      <div key={entry.number} className="lexicon-card">
+                        <span className="hebrew">{entry.word}</span>
+                        <span className="transliteration">{entry.transliteration}</span>
+                        <span className="strongs">{entry.number}</span>
+                        <strong>{entry.meaning}</strong>
+                        <small>Pronounced {entry.pronunciation}</small>
+                        <button className="pronounce-button" onClick={() => pronounceOriginal(entry)} aria-label={`Hear ${entry.transliteration}`}>▶ Hear</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="study-content notes-tab-content">
+                  <div className="study-reference"><span>Notes · {selected?.reference || `${selectedBook.name} ${chapter}`}</span><small>{chapterNotes.length} in this chapter</small></div>
+                  <div className="notes-card open">
+                    <div className="notes-heading"><span><i>⌑</i> Note for selected verse</span></div>
+                    <textarea value={noteValue} onChange={(event) => updateNote(event.target.value)} placeholder="What are you noticing?" aria-label={`Note for ${selected?.reference || "selected verse"}`} />
+                    <div className="saved-state"><span>✓ Saved on this device</span><small>{noteValue.length}/500</small></div>
+                  </div>
+                  {chapterNotes.length > 0 && <div className="chapter-notes-list"><h3>Chapter notes</h3>{chapterNotes.map((verse) => <button key={verse.id} onClick={() => setSelectedVerse(verse.id)}><strong>{verse.reference}</strong><span>{notes[verseKey(verse.id)]}</span></button>)}</div>}
                 </div>
               )}
-              <div className="notes-card open">
-                <div className="notes-heading"><span><i>⌑</i> My note · {selected?.reference || `${selectedBook.name} ${chapter}`}</span></div>
-                <textarea value={noteValue} onChange={(event) => updateNote(event.target.value)} placeholder="What are you noticing?" aria-label={`Note for ${selected?.reference || "selected verse"}`} />
-                <div className="saved-state"><span>✓ Saved on this device</span><small>{noteValue.length}/500</small></div>
-              </div>
             </>
           )}
         </aside>
@@ -413,11 +578,11 @@ export default function Home() {
       <section className={`audio-dock ${audioSettingsOpen ? "settings-open" : ""}`} aria-label="Read aloud controls">
         {audioSettingsOpen && (
           <div className="audio-settings-popover">
-            <label><span>Voice</span><select value={voiceName} onChange={(event) => setVoiceName(event.target.value)}>{voices.length === 0 && <option>System voice</option>}{voices.filter((voice) => voice.lang.startsWith("en")).map((voice) => <option key={voice.name} value={voice.name}>{voice.name.replace("Microsoft ", "").replace("Google ", "")}</option>)}</select></label>
+            <label><span>Voice</span><select value={voiceName} onChange={(event) => { setVoiceName(event.target.value); localStorage.setItem("selah-voice", event.target.value); }}>{voices.length === 0 && <option>System voice</option>}{sortedVoices.map((voice) => <option key={voice.name} value={voice.name}>{voice.name}{voice.name.toLowerCase().includes("microsoft david") ? " · default" : ""}</option>)}</select></label>
             <label><span>Speed</span><input type="range" min="0.7" max="1.25" step="0.05" value={rate} onChange={(event) => setRate(Number(event.target.value))} /><strong>{rate.toFixed(2)}×</strong></label>
           </div>
         )}
-        <div className="now-reading"><span className="audio-pulse">◖</span><div><small>{isReading ? "READING" : "READ ALOUD"}</small><strong>{activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}</strong></div></div>
+        <div className="now-reading"><span className="audio-pulse">◖</span><div><small>{isPaused ? "PAUSED" : isReading ? "READING" : "READ ALOUD"}</small><strong>{activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}</strong></div></div>
         <div className="transport">
           <button className="skip-button" aria-label="Previous verse" onClick={() => jumpToVerse(Math.max(verses[0]?.id || 1, (activeVerse || selectedVerse) - 1))}>‹<span>|</span></button>
           {!isReading ? <button className="play-button" onClick={() => startReading()} aria-label="Start read aloud">▶</button> : <button className="play-button" onClick={togglePause} aria-label={isPaused ? "Resume read aloud" : "Pause read aloud"}>{isPaused ? "▶" : "Ⅱ"}</button>}

@@ -73,10 +73,18 @@ button, select { cursor: pointer; }
 .verse-row { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 6px; align-items: start; margin: 2px -18px; padding: 9px 13px 9px 10px; border-radius: 9px; border-left: 3px solid transparent; transition: background .18s ease, border-color .18s ease, transform .18s ease; }
 .verse-row:hover, .verse-row.selected { background: #f7f6f1; }
 .verse-row.reading { background: var(--sage-soft); border-left-color: var(--sage); transform: translateX(3px); }
-.verse-row.highlighted:not(.reading) { background: linear-gradient(90deg, var(--gold-soft), rgba(244,233,190,.35)); }
+.verse-row.highlight-gold:not(.reading) { background: linear-gradient(90deg, #f6e7a8, rgba(246,231,168,.34)); }
+.verse-row.highlight-sage:not(.reading) { background: linear-gradient(90deg, #cfe3d5, rgba(207,227,213,.32)); }
+.verse-row.highlight-blue:not(.reading) { background: linear-gradient(90deg, #cfe2ef, rgba(207,226,239,.32)); }
+.verse-row.highlight-rose:not(.reading) { background: linear-gradient(90deg, #efd3d0, rgba(239,211,208,.32)); }
+.verse-row.batch-selected { outline: 2px solid #9caf9f; outline-offset: -2px; background: #f0f5f1; }
 .verse-number { border: 0; background: transparent; color: #a89b79; font-size: 10px; font-weight: 850; padding: 7px 0 0; }
-.verse-row p { margin: 0; color: #31352f; font: 18px/1.67 Georgia, "Times New Roman", serif; }
+.verse-row.batch-selected .verse-number { width: 24px; height: 24px; margin-top: 2px; padding: 0; border-radius: 50%; color: white; background: var(--sage); }
+.verse-row p { margin: 0; color: #31352f; font: 18px/1.67 Georgia, "Times New Roman", serif; cursor: pointer; }
 .verse-row.reading p { color: #173d30; }
+.verse-word { display: inline; margin: 0; padding: 1px 0; border: 0; border-radius: 3px; background: transparent; color: inherit; font: inherit; text-align: inherit; cursor: text; }
+.verse-word:hover { color: var(--sage); background: rgba(52,92,76,.09); }
+.verse-word.word-selected { color: #173d30; background: #d9e9df; box-shadow: 0 0 0 2px #d9e9df; }
 .verse-actions { display: flex; gap: 2px; opacity: 0; transition: opacity .15s; padding-top: 2px; }
 .verse-row:hover .verse-actions, .verse-row.selected .verse-actions { opacity: 1; }
 .verse-actions button { width: 28px; height: 28px; border: 0; border-radius: 6px; color: #8c8b82; background: rgba(255,255,255,.76); }
@@ -97,10 +105,20 @@ button, select { cursor: pointer; }
 .chapter-navigation { max-width: 760px; margin: 25px auto 0; display: flex; justify-content: space-between; }
 .chapter-navigation button { display: flex; align-items: center; gap: 9px; padding: 10px 13px; border: 1px solid var(--line); border-radius: 9px; color: var(--sage); background: white; font-size: 11px; font-weight: 750; }
 .chapter-navigation b { font-size: 21px; line-height: .8; }
+.highlight-toolbar { position: fixed; z-index: 34; left: 50%; bottom: 82px; transform: translateX(-50%); display: flex; align-items: center; gap: 9px; padding: 10px 12px 10px 15px; border: 1px solid var(--line); border-radius: 14px; background: var(--white); box-shadow: 0 15px 42px rgba(29,39,32,.2); }
+.highlight-toolbar strong { color: var(--sage); font-size: 11px; }
+.highlight-toolbar > span { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.color-swatch { width: 27px; height: 27px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px var(--line); }
+.color-swatch.gold { background: #e9cb61; }
+.color-swatch.sage { background: #8eb49a; }
+.color-swatch.blue { background: #8eb9d3; }
+.color-swatch.rose { background: #d99a95; }
+.clear-highlight { height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--muted); font-size: 9px; font-weight: 750; }
+.cancel-selection { width: 28px; height: 28px; border: 0; border-radius: 50%; background: #f0eee7; color: var(--muted); font-size: 17px; }
 
 .study-panel { position: relative; min-width: 0; background: #f2f0e9; padding: 0 24px 110px; overflow: visible; }
 .study-collapse { position: absolute; z-index: 4; left: -15px; top: 22px; width: 30px; height: 38px; border: 1px solid var(--line); border-radius: 10px; background: var(--white); color: var(--sage); box-shadow: 0 4px 12px rgba(31,39,33,.1); font-size: 22px; line-height: 1; }
-.study-tabs { height: 62px; display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--line); }
+.study-tabs { height: 62px; display: grid; grid-template-columns: 1fr 1.25fr .75fr; border-bottom: 1px solid var(--line); }
 .study-tabs button { border: 0; background: transparent; color: var(--muted); font-size: 11px; font-weight: 800; position: relative; }
 .study-tabs button.active { color: var(--sage); }
 .study-tabs button.active::after { content: ""; position: absolute; bottom: -1px; left: 22%; right: 22%; height: 2px; background: var(--sage); }
@@ -123,7 +141,15 @@ button, select { cursor: pointer; }
 .cross-references span, .cross-references small { display: block; }
 .cross-references span { color: var(--sage); font: 700 12px Georgia, serif; }
 .cross-references small { margin-top: 4px; color: var(--muted); font: italic 10px Georgia, serif; }
-.lexicon-intro { color: var(--muted); font: 13px/1.5 Georgia, serif; }
+.lexicon-intro { margin: 0; color: var(--muted); font: 13px/1.5 Georgia, serif; }
+.lexicon-intro-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lexicon-intro-row > button { flex: 0 0 auto; padding: 7px 9px; border: 1px solid #b9c9c0; border-radius: 8px; color: var(--sage); background: var(--sage-soft); font-size: 9px; font-weight: 800; }
+.word-lookup-card { margin-bottom: 15px; padding: 16px; border: 1px solid #b9c9c0; border-radius: 11px; background: var(--sage-soft); }
+.word-lookup-card > span { color: var(--sage); font-size: 8px; font-weight: 850; letter-spacing: .13em; }
+.word-lookup-card h3 { margin: 5px 0 9px; font: 600 23px Georgia, serif; }
+.word-lookup-card p { margin: 0; color: #526158; font: 12px/1.45 Georgia, serif; }
+.lookup-match b { display: block; color: var(--sage); font: 600 24px serif; }
+.lookup-match button { margin-top: 10px; padding: 7px 9px; border: 0; border-radius: 7px; color: white; background: var(--sage); font-size: 9px; font-weight: 800; }
 .lexicon-list { display: grid; gap: 9px; margin-top: 17px; }
 .lexicon-card { display: grid; grid-template-columns: 1fr auto; text-align: left; padding: 15px; border: 1px solid var(--line); border-radius: 10px; background: var(--white); }
 .lexicon-card:hover { border-color: #9fb2a8; }
@@ -131,12 +157,22 @@ button, select { cursor: pointer; }
 .transliteration { color: var(--muted); font: italic 11px Georgia, serif; justify-self: end; padding-top: 7px; }
 .strongs { grid-column: 1 / -1; margin-top: 7px; color: #a18d57; font-size: 8px; font-weight: 850; }
 .lexicon-card strong { grid-column: 1 / -1; margin-top: 2px; font: 600 13px Georgia, serif; }
+.lexicon-card small { grid-column: 1; margin-top: 6px; color: var(--muted); font-size: 9px; }
+.pronounce-button { grid-column: 2; grid-row: 4 / 6; align-self: end; padding: 6px 8px; border: 1px solid #bfd0c6; border-radius: 7px; color: var(--sage); background: var(--sage-soft); font-size: 9px; font-weight: 800; }
 .notes-card { position: sticky; bottom: 72px; margin-top: 24px; border: 1px solid #d9d4c8; border-radius: 11px; overflow: hidden; background: var(--white); box-shadow: 0 8px 30px rgba(45,40,30,.08); }
 .notes-heading { width: 100%; padding: 12px 14px; font-size: 10px; font-weight: 800; }
 .notes-heading i { color: #aa8e45; font-style: normal; margin-right: 5px; }
 .notes-card textarea { display: block; width: calc(100% - 26px); min-height: 76px; resize: vertical; margin: 0 13px; padding: 10px; border: 1px solid var(--line); border-radius: 7px; outline: none; background: #faf9f5; color: var(--ink); font: 12px/1.5 Georgia, serif; }
 .notes-card textarea:focus { border-color: #91a89e; box-shadow: 0 0 0 3px rgba(52,92,76,.08); }
 .saved-state { display: flex; justify-content: space-between; padding: 8px 14px 11px; color: #879087; font-size: 8px; }
+.notes-tab-content .notes-card { position: static; margin-top: 0; }
+.study-reference > small { color: var(--muted); font-size: 9px; }
+.chapter-notes-list { margin-top: 22px; }
+.chapter-notes-list h3 { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; }
+.chapter-notes-list button { display: block; width: 100%; padding: 11px 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; text-align: left; }
+.chapter-notes-list strong, .chapter-notes-list span { display: block; }
+.chapter-notes-list strong { color: var(--sage); font: 700 11px Georgia, serif; }
+.chapter-notes-list span { margin-top: 4px; overflow: hidden; color: var(--muted); font: 11px/1.3 Georgia, serif; white-space: nowrap; text-overflow: ellipsis; }
 .study-rail { height: 100%; padding: 76px 0; display: flex; flex-direction: column; align-items: center; gap: 17px; }
 .study-rail button { width: 42px; min-height: 42px; border: 0; border-radius: 10px; background: rgba(255,255,255,.65); color: var(--sage); font: 700 18px Georgia, serif; position: relative; }
 .study-rail i { pointer-events: none; opacity: 0; position: absolute; right: 48px; top: 50%; transform: translateY(-50%); width: max-content; padding: 6px 9px; border-radius: 6px; background: var(--ink); color: white; font: normal 10px Inter, sans-serif; transition: opacity .15s; }
@@ -194,6 +230,7 @@ button, select { cursor: pointer; }
   .testament-columns { grid-template-columns: 1fr; gap: 27px; }
   .chapter-grid { grid-template-columns: repeat(7, minmax(38px, 1fr)); }
   .audio-dock { right: 10px; bottom: 8px; width: calc(100vw - 20px); }
+  .highlight-toolbar { bottom: 72px; width: calc(100vw - 24px); justify-content: center; flex-wrap: wrap; }
 }
 
 @media (max-width: 520px) {
@@ -219,6 +256,9 @@ button, select { cursor: pointer; }
   .skip-button { width: 33px; height: 33px; }
   .play-button { width: 38px; height: 38px; }
   .stop-button { display: none; }
+  .highlight-toolbar > span { display: none; }
+  .highlight-toolbar { gap: 7px; padding: 8px; }
+  .highlight-toolbar strong { width: 100%; text-align: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
