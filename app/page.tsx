@@ -30,6 +30,8 @@ type BibleSourceVerse = { verse: string; text: string };
 type BibleSourceChapter = { chapter: string; verses: BibleSourceVerse[] };
 type BibleSourceBook = { book: string; chapters: BibleSourceChapter[] };
 
+const ENABLED_VOICES_STORAGE_KEY = "selah-enabled-voices";
+
 const books: Book[] = [
   ["Genesis",50,"Old Testament"],["Exodus",40,"Old Testament"],["Leviticus",27,"Old Testament"],["Numbers",36,"Old Testament"],["Deuteronomy",34,"Old Testament"],
   ["Joshua",24,"Old Testament"],["Judges",21,"Old Testament"],["Ruth",4,"Old Testament"],["1 Samuel",31,"Old Testament"],["2 Samuel",24,"Old Testament"],
@@ -110,6 +112,14 @@ function voiceRank(voice: SpeechSynthesisVoice) {
   return 10;
 }
 
+function defaultEnabledVoiceNames(voices: SpeechSynthesisVoice[]) {
+  const sortedEnglish = voices
+    .filter((voice) => voice.lang.toLowerCase().startsWith("en"))
+    .sort((a, b) => voiceRank(a) - voiceRank(b) || a.name.localeCompare(b.name));
+  const preferred = sortedEnglish.filter((voice) => voiceRank(voice) <= 3).slice(0, 6);
+  return (preferred.length ? preferred : sortedEnglish.slice(0, 4)).map((voice) => voice.name);
+}
+
 function bookSlug(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
@@ -171,6 +181,7 @@ export default function Home() {
   const [rate, setRate] = useState(0.92);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceName, setVoiceName] = useState("");
+  const [enabledVoiceNames, setEnabledVoiceNames] = useState<string[]>([]);
   const [savedAudioChapters, setSavedAudioChapters] = useState<Set<string>>(new Set());
   const [highlights, setHighlights] = useState<Record<string, HighlightColor>>({});
   const [savedTextCache, setSavedTextCache] = useState<SavedTextCache>({});
@@ -205,6 +216,7 @@ export default function Home() {
   const savedPanelRef = useRef<HTMLDivElement | null>(null);
   const pendingSavedVerse = useRef<number | null>(null);
   const bibleBookCache = useRef<Record<string, BibleSourceBook>>({});
+  const voicePreferencesLoaded = useRef(false);
 
   const passageKey = `${selectedBook.name}-${chapter}`;
   const verseKey = (id: number) => `${passageKey}-${id}`;
@@ -275,6 +287,17 @@ export default function Home() {
       const available = window.speechSynthesis.getVoices();
       setVoices(available);
       const savedVoice = localStorage.getItem("selah-voice");
+      const savedEnabledVoices = localStorage.getItem(ENABLED_VOICES_STORAGE_KEY);
+      if (!voicePreferencesLoaded.current) {
+        voicePreferencesLoaded.current = true;
+        try {
+          const parsed = savedEnabledVoices ? JSON.parse(savedEnabledVoices) as unknown : null;
+          if (Array.isArray(parsed) && parsed.every((item) => typeof item === "string")) setEnabledVoiceNames(parsed);
+          else setEnabledVoiceNames(defaultEnabledVoiceNames(available));
+        } catch {
+          setEnabledVoiceNames(defaultEnabledVoiceNames(available));
+        }
+      }
       setVoiceName((current) => current || available.find((voice) => voice.name === savedVoice)?.name || bestVoice(available)?.name || "");
     };
     loadVoices();
@@ -694,6 +717,20 @@ export default function Home() {
     localStorage.setItem("selah-notes-v2", JSON.stringify(next));
   };
 
+  const toggleVoiceVisibility = (name: string) => {
+    setEnabledVoiceNames((current) => {
+      const next = current.includes(name) ? current.filter((item) => item !== name) : [...current, name];
+      localStorage.setItem(ENABLED_VOICES_STORAGE_KEY, JSON.stringify(next));
+      if (name === voiceName && !next.includes(name)) {
+        const fallback = sortedVoices.find((voice) => next.includes(voice.name)) || bestVoice(sortedVoices);
+        const fallbackName = fallback?.name || "";
+        setVoiceName(fallbackName);
+        if (fallbackName) localStorage.setItem("selah-voice", fallbackName);
+      }
+      return next;
+    });
+  };
+
   const chooseBook = (book: Book) => {
     setSelectedBook(book);
     setChapter(1);
@@ -729,6 +766,11 @@ export default function Home() {
   const filteredOldTestament = useMemo(() => oldTestament.filter((book) => book.name.toLowerCase().includes(bookFilter.trim().toLowerCase())), [bookFilter, oldTestament]);
   const filteredNewTestament = useMemo(() => newTestament.filter((book) => book.name.toLowerCase().includes(bookFilter.trim().toLowerCase())), [bookFilter, newTestament]);
   const sortedVoices = useMemo(() => voices.filter((voice) => voice.lang.toLowerCase().startsWith("en")).sort((a, b) => voiceRank(a) - voiceRank(b) || a.name.localeCompare(b.name)), [voices]);
+  const enabledVoiceSet = useMemo(() => new Set(enabledVoiceNames), [enabledVoiceNames]);
+  const visibleVoices = useMemo(() => {
+    const selected = sortedVoices.filter((voice) => enabledVoiceSet.has(voice.name));
+    return selected.length ? selected : sortedVoices;
+  }, [enabledVoiceSet, sortedVoices]);
   const activeLexicon = selectedBook.testament === "Old Testament" ? hebrewLexicon : greekLexicon;
   const selectedLookupEntry = useMemo(() => {
     const word = selectedWord.toLowerCase();
@@ -743,6 +785,14 @@ export default function Home() {
       || [...entries].reverse().find((entry) => entry.anchorVerse <= selectedVerse)
       || entries[0];
   }, [commentaryData, selectedVerse]);
+
+  useEffect(() => {
+    if (!voiceName || !sortedVoices.length || !enabledVoiceNames.length || enabledVoiceSet.has(voiceName)) return;
+    const fallback = visibleVoices[0] || bestVoice(sortedVoices);
+    const fallbackName = fallback?.name || "";
+    setVoiceName(fallbackName);
+    if (fallbackName) localStorage.setItem("selah-voice", fallbackName);
+  }, [enabledVoiceNames.length, enabledVoiceSet, sortedVoices, visibleVoices, voiceName]);
   const commentaryTokens = useMemo(() => activeCommentaryEntry?.text.split(/(\s+)/) || [], [activeCommentaryEntry]);
   const historicalCommentaryUrl = `https://biblehub.com/commentaries/cambridge/${bibleHubBookSlug(selectedBook.name)}/${chapter}.htm`;
   const chapterNotes = verses.filter((verse) => Boolean(notes[verseKey(verse.id)]));
@@ -1354,10 +1404,22 @@ export default function Home() {
       <section className={`audio-dock ${audioSettingsOpen ? "settings-open" : ""} ${audioDockCollapsed ? "collapsed" : ""}`} aria-label="Read aloud controls">
         {audioSettingsOpen && !audioDockCollapsed && (
           <div className="audio-settings-popover">
-            <label><span>Voice</span><select value={voiceName || "local"} onChange={(event) => { const value = event.target.value; const next = value === "local" ? bestVoice(sortedVoices)?.name || "" : value; setVoiceName(next); localStorage.setItem("selah-voice", next); }}>
+            <label><span>Voice</span><select value={voiceName || "local"} onChange={(event) => { const value = event.target.value; const next = value === "local" ? bestVoice(visibleVoices)?.name || "" : value; setVoiceName(next); localStorage.setItem("selah-voice", next); }}>
               <option value="local">Installed browser voice{voiceName ? ` · ${voiceName}` : ""}</option>
-              <optgroup label="Installed local voices">{sortedVoices.map((voice) => <option key={voice.name} value={voice.name}>{voice.name}{voice.name.toLowerCase().includes("microsoft david") ? " · default" : ""}</option>)}</optgroup>
+              <optgroup label="Shown voices">{visibleVoices.map((voice) => <option key={voice.name} value={voice.name}>{voice.name}{voice.name.toLowerCase().includes("microsoft david") ? " · default" : ""}</option>)}</optgroup>
             </select></label>
+            <details className="voice-picker-panel">
+              <summary><span>Shown voices</span><strong>{enabledVoiceNames.length || sortedVoices.length}</strong></summary>
+              <div className="voice-toggle-list">
+                {sortedVoices.map((voice) => (
+                  <label key={voice.name} className="voice-toggle-row">
+                    <input type="checkbox" checked={enabledVoiceSet.has(voice.name)} onChange={() => toggleVoiceVisibility(voice.name)} />
+                    <span>{voice.name}</span>
+                    <small>{voice.localService ? "Local" : "Browser"}</small>
+                  </label>
+                ))}
+              </div>
+            </details>
             <p className="voice-availability">No API key is required. Selah uses installed browser voices first, and will automatically use saved chapter audio files when you add them under <code>public/audio</code>.</p>
             <p className="voice-availability">{savedAudioChapters.has(chapterAudioKey) ? "Saved audio is available for this chapter." : "No saved audio file found for this chapter yet."}</p>
             <label><span>Speed</span><input type="range" min="0.7" max="1.25" step="0.05" value={rate} onChange={(event) => setRate(Number(event.target.value))} /><strong>{rate.toFixed(2)}×</strong></label>

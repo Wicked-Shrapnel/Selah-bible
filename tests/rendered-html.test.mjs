@@ -106,6 +106,10 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.doesNotMatch(page, /\{color\} highlight/);
   assert.match(page, /selah-highlight-color/);
   assert.match(page, /selah-audio-dock-collapsed/);
+  assert.match(page, /selah-enabled-voices/);
+  assert.match(page, /toggleVoiceVisibility/);
+  assert.match(page, /voice-picker-panel/);
+  assert.match(page, /visibleVoices/);
   assert.match(page, /toggleCommentaryReading/);
   assert.match(page, /Read commentary aloud/);
   assert.match(page, /Add section note/);
