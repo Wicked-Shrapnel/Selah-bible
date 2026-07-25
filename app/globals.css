@@ -140,6 +140,7 @@ button, select { cursor: pointer; }
 .study-reference { display: flex; align-items: center; justify-content: space-between; margin-bottom: 17px; }
 .study-reference span { font: 700 18px Georgia, serif; }
 .study-reference button { border: 0; background: transparent; color: var(--muted); }
+.study-reference small { color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .commentary-card { padding: 21px; border: 1px solid #dedbd2; border-radius: 12px; background: var(--white); box-shadow: 0 6px 24px rgba(48,43,32,.04); }
 .card-label { color: #a28b4f; font-size: 8px; font-weight: 850; letter-spacing: .17em; }
 .commentary-card h2 { margin: 9px 0 11px; font: 600 21px/1.22 Georgia, serif; }
@@ -149,12 +150,23 @@ button, select { cursor: pointer; }
 .commentary-author strong, .commentary-author small { display: block; }
 .commentary-author strong { font-size: 10px; }
 .commentary-author small { margin-top: 3px; color: var(--muted); font-size: 8px; }
+.commentary-source { display: block; margin-top: 12px; color: var(--sage); font-size: 8px; line-height: 1.4; text-decoration: none; }
+.commentary-source:hover { text-decoration: underline; }
+.commentary-state { padding: 22px; border: 1px dashed #c8c4b8; border-radius: 12px; color: var(--muted); background: rgba(255,255,255,.55); font: italic 13px/1.55 Georgia, serif; }
 .cross-references { margin-top: 22px; }
 .cross-references h3 { font-size: 10px; letter-spacing: .09em; text-transform: uppercase; }
 .cross-references button { display: block; width: 100%; padding: 11px 0; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: transparent; }
 .cross-references span, .cross-references small { display: block; }
 .cross-references span { color: var(--sage); font: 700 12px Georgia, serif; }
 .cross-references small { margin-top: 4px; color: var(--muted); font: italic 10px Georgia, serif; }
+.reference-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.reference-chips span { padding: 6px 8px; border: 1px solid #cfd9d3; border-radius: 999px; color: var(--sage); background: var(--sage-soft); font: 700 10px Georgia, serif; }
+.chapter-commentary-list { margin-top: 18px; border-top: 1px solid var(--line); }
+.chapter-commentary-list summary { padding: 14px 0; color: var(--sage); cursor: pointer; font-size: 10px; font-weight: 800; }
+.chapter-commentary-list button { display: block; width: 100%; padding: 11px 0; text-align: left; border: 0; border-top: 1px solid var(--line); background: transparent; }
+.chapter-commentary-list strong, .chapter-commentary-list span { display: block; }
+.chapter-commentary-list strong { color: #4e584f; font: 700 11px Georgia, serif; }
+.chapter-commentary-list span { margin-top: 4px; color: var(--muted); font: 10px/1.45 Georgia, serif; }
 .lexicon-intro { margin: 0; color: var(--muted); font: 13px/1.5 Georgia, serif; }
 .lexicon-intro-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .lexicon-intro-row > button { flex: 0 0 auto; padding: 7px 9px; border: 1px solid #b9c9c0; border-radius: 8px; color: var(--sage); background: var(--sage-soft); font-size: 9px; font-weight: 800; }
