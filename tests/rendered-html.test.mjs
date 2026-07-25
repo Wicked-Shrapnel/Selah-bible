@@ -75,6 +75,6 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /utterance\.onboundary/);
   assert.match(page, /commentary-spoken-word/);
   assert.match(page, /wordStudyMode/);
-  assert.match(page, /RECENT WORDS/);
+  assert.doesNotMatch(page, /recentWords|RECENT WORDS/);
   assert.match(page, /id === sorted\[0\] - 1/);
 });

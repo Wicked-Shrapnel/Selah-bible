@@ -23,7 +23,6 @@ type CommentarySource = {
 };
 type CommentaryChapter = { source: CommentarySource; book: string; chapter: number; entries: CommentaryEntry[] };
 type SavedPlace = { book: string; chapter: number };
-type RecentWord = { key: string; word: string; verseId: number };
 
 const books: Book[] = [
   ["Genesis",50,"Old Testament"],["Exodus",40,"Old Testament"],["Leviticus",27,"Old Testament"],["Numbers",36,"Old Testament"],["Deuteronomy",34,"Old Testament"],
@@ -134,7 +133,6 @@ export default function Home() {
   const [selectedWord, setSelectedWord] = useState("");
   const [selectedWordKey, setSelectedWordKey] = useState("");
   const [wordStudyMode, setWordStudyMode] = useState(false);
-  const [recentWords, setRecentWords] = useState<RecentWord[]>([]);
   const [openVerseMenu, setOpenVerseMenu] = useState<number | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [studyTab, setStudyTab] = useState<StudyTab>("commentary");
@@ -519,10 +517,6 @@ export default function Home() {
     setSelectedWord(cleaned);
     setSelectedWordKey(wordKey);
     setSelectedVerse(verseId);
-    setRecentWords((current) => {
-      const next = [...current.filter((entry) => entry.key !== wordKey), { key: wordKey, word: cleaned, verseId }];
-      return next.slice(-4);
-    });
     setStudyTab("lexicon");
     setStudyCollapsed(false);
     setMobileStudyOpen(true);
@@ -922,12 +916,6 @@ export default function Home() {
                       {wordStudyMode ? "On" : "Off"}
                     </button>
                   </div>
-                  {recentWords.length > 0 && (
-                    <div className="recent-words">
-                      <span>RECENT WORDS</span>
-                      <div>{recentWords.map((entry) => <button key={entry.key} onClick={() => speakSelectedWord(entry.word)}>{entry.word}</button>)}</div>
-                    </div>
-                  )}
                   {selectedWord && (
                     <div className="word-lookup-card">
                       <span>SELECTED WORD</span>

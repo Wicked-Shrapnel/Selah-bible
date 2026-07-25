@@ -196,10 +196,6 @@ button, select { cursor: pointer; }
 .word-study-control span { margin-top: 3px; color: var(--muted); font-size: 9px; }
 .word-study-control button { min-width: 42px; padding: 7px 9px; border: 1px solid #aebfb5; border-radius: 999px; color: var(--sage); background: white; font-size: 9px; font-weight: 850; }
 .word-study-control button.active { color: white; border-color: var(--sage); background: var(--sage); }
-.recent-words { margin: 0 0 14px; }
-.recent-words > span { color: #9b8a5c; font-size: 8px; font-weight: 850; letter-spacing: .12em; }
-.recent-words > div { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
-.recent-words button { padding: 6px 9px; border: 1px solid #c6d3cc; border-radius: 999px; color: var(--sage); background: white; font: 600 10px Georgia, serif; }
 .lexicon-intro-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .lexicon-intro-row > button { flex: 0 0 auto; padding: 7px 9px; border: 1px solid #b9c9c0; border-radius: 8px; color: var(--sage); background: var(--sage-soft); font-size: 9px; font-weight: 800; }
 .word-lookup-card { margin-bottom: 15px; padding: 16px; border: 1px solid #b9c9c0; border-radius: 11px; background: var(--sage-soft); }
