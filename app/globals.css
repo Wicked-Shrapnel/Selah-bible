@@ -97,6 +97,7 @@ button, select { cursor: pointer; }
 .verse-row.reading p { color: #173d30; }
 .verse-word { display: inline; margin: 0; padding: 1px 0; border: 0; border-radius: 3px; background: transparent; color: inherit; font: inherit; text-align: inherit; cursor: text; }
 .verse-word:hover { color: var(--sage); background: rgba(52,92,76,.09); }
+.verse-word.pronunciation-ready { cursor: pointer; }
 .verse-word.word-selected { color: #173d30; background: #d9e9df; box-shadow: 0 0 0 2px #d9e9df; }
 .verse-actions { position: relative; display: flex; gap: 2px; opacity: 0; transition: opacity .15s; padding-top: 2px; }
 .verse-row:hover .verse-actions, .verse-row.selected .verse-actions { opacity: 1; }
@@ -160,6 +161,9 @@ button, select { cursor: pointer; }
 .card-label { color: #a28b4f; font-size: 8px; font-weight: 850; letter-spacing: .17em; }
 .commentary-card h2 { margin: 9px 0 11px; font: 600 21px/1.22 Georgia, serif; }
 .commentary-card p { margin: 0; color: #575b55; font: 14px/1.62 Georgia, serif; }
+.commentary-card p.commentary-reading { padding-left: 10px; border-left: 2px solid #b8c9bf; }
+.commentary-card p span { border-radius: 3px; transition: color .12s ease, background-color .12s ease; }
+.commentary-card p .commentary-spoken-word { color: #173d30; background: #dce9e1; box-shadow: 0 0 0 2px #dce9e1; }
 .commentary-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .commentary-card-top button { flex: 0 0 auto; padding: 5px 1px 3px; border: 0; border-bottom: 1px solid #9fb5aa; color: var(--sage); background: transparent; font-size: 9px; font-weight: 800; }
 .commentary-card-top button.active { color: var(--sage-dark); border-bottom-color: var(--sage-dark); background: transparent; }
@@ -186,6 +190,16 @@ button, select { cursor: pointer; }
 .chapter-commentary-list strong { color: #4e584f; font: 700 11px Georgia, serif; }
 .chapter-commentary-list span { margin-top: 4px; color: var(--muted); font: 10px/1.45 Georgia, serif; }
 .lexicon-intro { margin: 0; color: var(--muted); font: 13px/1.5 Georgia, serif; }
+.word-study-control { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 13px; padding: 12px 13px; border: 1px solid #c8d5ce; border-radius: 10px; background: rgba(236,243,239,.68); }
+.word-study-control strong, .word-study-control span { display: block; }
+.word-study-control strong { color: #334b40; font: 700 11px Georgia, serif; }
+.word-study-control span { margin-top: 3px; color: var(--muted); font-size: 9px; }
+.word-study-control button { min-width: 42px; padding: 7px 9px; border: 1px solid #aebfb5; border-radius: 999px; color: var(--sage); background: white; font-size: 9px; font-weight: 850; }
+.word-study-control button.active { color: white; border-color: var(--sage); background: var(--sage); }
+.recent-words { margin: 0 0 14px; }
+.recent-words > span { color: #9b8a5c; font-size: 8px; font-weight: 850; letter-spacing: .12em; }
+.recent-words > div { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.recent-words button { padding: 6px 9px; border: 1px solid #c6d3cc; border-radius: 999px; color: var(--sage); background: white; font: 600 10px Georgia, serif; }
 .lexicon-intro-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .lexicon-intro-row > button { flex: 0 0 auto; padding: 7px 9px; border: 1px solid #b9c9c0; border-radius: 8px; color: var(--sage); background: var(--sage-soft); font-size: 9px; font-weight: 800; }
 .word-lookup-card { margin-bottom: 15px; padding: 16px; border: 1px solid #b9c9c0; border-radius: 11px; background: var(--sage-soft); }

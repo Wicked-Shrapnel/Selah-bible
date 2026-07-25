@@ -23,6 +23,7 @@ type CommentarySource = {
 };
 type CommentaryChapter = { source: CommentarySource; book: string; chapter: number; entries: CommentaryEntry[] };
 type SavedPlace = { book: string; chapter: number };
+type RecentWord = { key: string; word: string; verseId: number };
 
 const books: Book[] = [
   ["Genesis",50,"Old Testament"],["Exodus",40,"Old Testament"],["Leviticus",27,"Old Testament"],["Numbers",36,"Old Testament"],["Deuteronomy",34,"Old Testament"],
@@ -131,6 +132,9 @@ export default function Home() {
   const [highlights, setHighlights] = useState<Record<string, HighlightColor>>({});
   const [selectedForHighlight, setSelectedForHighlight] = useState<number[]>([]);
   const [selectedWord, setSelectedWord] = useState("");
+  const [selectedWordKey, setSelectedWordKey] = useState("");
+  const [wordStudyMode, setWordStudyMode] = useState(false);
+  const [recentWords, setRecentWords] = useState<RecentWord[]>([]);
   const [openVerseMenu, setOpenVerseMenu] = useState<number | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [studyTab, setStudyTab] = useState<StudyTab>("commentary");
@@ -143,6 +147,7 @@ export default function Home() {
   const [bookmark, setBookmark] = useState<SavedPlace | null>(null);
   const [isReadingCommentary, setIsReadingCommentary] = useState(false);
   const [isCommentaryPaused, setIsCommentaryPaused] = useState(false);
+  const [commentaryWordIndex, setCommentaryWordIndex] = useState<number | null>(null);
   const cancelled = useRef(false);
   const activeAudio = useRef<HTMLAudioElement | null>(null);
 
@@ -263,6 +268,7 @@ export default function Home() {
       setIsPaused(false);
       setIsReadingCommentary(false);
       setIsCommentaryPaused(false);
+      setCommentaryWordIndex(null);
       setActiveVerse(null);
       setSelectedForHighlight([]);
       loadChapter();
@@ -282,6 +288,7 @@ export default function Home() {
     setIsPaused(false);
     setIsReadingCommentary(false);
     setIsCommentaryPaused(false);
+    setCommentaryWordIndex(null);
     setActiveVerse(null);
   }, []);
 
@@ -451,7 +458,16 @@ export default function Home() {
 
   const toggleVerseSelection = (id: number) => {
     setSelectedVerse(id);
-    setSelectedForHighlight((current) => current.includes(id) ? current.filter((verseId) => verseId !== id) : [...current, id]);
+    setSelectedForHighlight((current) => {
+      const sorted = [...current].sort((a, b) => a - b);
+      if (!sorted.length) return [id];
+      if (sorted.includes(id)) {
+        if (id === sorted[0] || id === sorted[sorted.length - 1]) return sorted.filter((verseId) => verseId !== id);
+        return [id];
+      }
+      if (id === sorted[0] - 1 || id === sorted[sorted.length - 1] + 1) return [...sorted, id].sort((a, b) => a - b);
+      return [id];
+    });
   };
 
   const applyHighlight = (color?: HighlightColor) => {
@@ -485,14 +501,32 @@ export default function Home() {
     setOpenVerseMenu(null);
   };
 
-  const selectWord = (word: string, verseId: number) => {
+  const speakSelectedWord = (word: string) => {
+    if (!("speechSynthesis" in window)) return;
+    stopReading();
+    window.setTimeout(() => {
+      const utterance = new SpeechSynthesisUtterance(word);
+      utterance.lang = "en-US";
+      utterance.rate = 0.78;
+      utterance.voice = voices.find((voice) => voice.name === voiceName) || bestVoice(voices) || null;
+      window.speechSynthesis.speak(utterance);
+    }, 90);
+  };
+
+  const selectWord = (word: string, verseId: number, wordKey: string) => {
     const cleaned = word.replace(/[^A-Za-zÀ-ž'-]/g, "");
     if (!cleaned) return;
     setSelectedWord(cleaned);
+    setSelectedWordKey(wordKey);
     setSelectedVerse(verseId);
+    setRecentWords((current) => {
+      const next = [...current.filter((entry) => entry.key !== wordKey), { key: wordKey, word: cleaned, verseId }];
+      return next.slice(-4);
+    });
     setStudyTab("lexicon");
     setStudyCollapsed(false);
     setMobileStudyOpen(true);
+    speakSelectedWord(cleaned);
   };
 
   const pronounceOriginal = (entry: LexiconEntry) => {
@@ -579,6 +613,7 @@ export default function Home() {
       || [...entries].reverse().find((entry) => entry.anchorVerse <= selectedVerse)
       || entries[0];
   }, [commentaryData, selectedVerse]);
+  const commentaryTokens = useMemo(() => activeCommentaryEntry?.text.split(/(\s+)/) || [], [activeCommentaryEntry]);
   const chapterNotes = verses.filter((verse) => Boolean(notes[verseKey(verse.id)]));
   const selectedSectionIds = [...selectedForHighlight].sort((a, b) => a - b);
   const sectionNoteKey = `${passageKey}-section-${selectedSectionIds.join("_")}`;
@@ -610,21 +645,35 @@ export default function Home() {
     }
 
     stopReading();
-    const utterance = new SpeechSynthesisUtterance(
-      `${selectedBook.name} ${chapter}. ${activeCommentaryEntry.heading}. ${activeCommentaryEntry.text}`,
-    );
+    const spokenPrefix = `${selectedBook.name} ${chapter}. ${activeCommentaryEntry.heading}. `;
+    const spokenText = `${spokenPrefix}${activeCommentaryEntry.text}`;
+    const wordRanges: { index: number; start: number; end: number }[] = [];
+    let characterOffset = spokenPrefix.length;
+    commentaryTokens.forEach((token, index) => {
+      if (!/^\s+$/.test(token)) wordRanges.push({ index, start: characterOffset, end: characterOffset + token.length });
+      characterOffset += token.length;
+    });
+    const utterance = new SpeechSynthesisUtterance(spokenText);
     utterance.rate = rate;
     utterance.voice = voices.find((voice) => voice.name === voiceName) || bestVoice(voices) || null;
+    utterance.onboundary = (event) => {
+      if (event.name && event.name !== "word") return;
+      const range = wordRanges.find((item) => event.charIndex >= item.start && event.charIndex < item.end);
+      if (range) setCommentaryWordIndex(range.index);
+    };
     utterance.onend = () => {
       setIsReadingCommentary(false);
       setIsCommentaryPaused(false);
+      setCommentaryWordIndex(null);
     };
     utterance.onerror = () => {
       setIsReadingCommentary(false);
       setIsCommentaryPaused(false);
+      setCommentaryWordIndex(null);
     };
     setIsReadingCommentary(true);
     setIsCommentaryPaused(false);
+    setCommentaryWordIndex(commentaryTokens.findIndex((token) => !/^\s+$/.test(token)));
     window.speechSynthesis.speak(utterance);
   };
 
@@ -732,16 +781,21 @@ export default function Home() {
                       onClick={() => toggleVerseSelection(verse.id)}
                       onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") toggleVerseSelection(verse.id); }}
                     >
-                      {verse.text.split(/(\s+)/).map((token, index) => (
-                        /^\s+$/.test(token) ? token : (
+                      {verse.text.split(/(\s+)/).map((token, index) => {
+                        const wordKey = `${passageKey}-${verse.id}-${index}`;
+                        return /^\s+$/.test(token) ? token : (
                           <button
                             key={`${token}-${index}`}
-                            className={`verse-word ${selectedWord && token.replace(/[^A-Za-zÀ-ž'-]/g, "").toLowerCase() === selectedWord.toLowerCase() ? "word-selected" : ""}`}
-                            onClick={(event) => { event.stopPropagation(); toggleVerseSelection(verse.id); selectWord(token, verse.id); }}
-                            aria-label={`Select ${verse.reference} and look up ${token.replace(/[^A-Za-zÀ-ž'-]/g, "")}`}
+                            className={`verse-word ${wordStudyMode ? "pronunciation-ready" : ""} ${selectedWordKey === wordKey ? "word-selected" : ""}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              if (wordStudyMode) selectWord(token, verse.id, wordKey);
+                              else toggleVerseSelection(verse.id);
+                            }}
+                            aria-label={wordStudyMode ? `Pronounce and look up ${token.replace(/[^A-Za-zÀ-ž'-]/g, "")}` : `Select ${verse.reference}`}
                           >{token}</button>
-                        )
-                      ))}
+                        );
+                      })}
                       {isActive && <span className="speaking-indicator" aria-label={isPaused ? "Reading paused" : "Reading this verse"}><i /><i /><i /></span>}
                     </p>
                     <div className="verse-actions">
@@ -817,7 +871,11 @@ export default function Home() {
                           </button>
                         </div>
                         <h2>{selectedBook.name} {chapter}:{activeCommentaryEntry.verseStart}{activeCommentaryEntry.verseEnd !== activeCommentaryEntry.verseStart ? `–${activeCommentaryEntry.verseEnd}` : ""}</h2>
-                        <p>{activeCommentaryEntry.text}</p>
+                        <p className={isReadingCommentary ? "commentary-reading" : ""} aria-live="off">
+                          {commentaryTokens.map((token, index) => /^\s+$/.test(token) ? token : (
+                            <span key={`${token}-${index}`} className={commentaryWordIndex === index ? "commentary-spoken-word" : ""}>{token}</span>
+                          ))}
+                        </p>
                         <div className="commentary-author">
                           <span>MH</span>
                           <div>
@@ -858,6 +916,18 @@ export default function Home() {
               ) : studyTab === "lexicon" ? (
                 <div className="study-content">
                   <div className="study-reference"><span>{selectedBook.testament === "Old Testament" ? "Hebrew" : "Greek"} · {selected?.reference || `${selectedBook.name} ${chapter}`}</span><button aria-label="More lexicon options">•••</button></div>
+                  <div className="word-study-control">
+                    <div><strong>Word pronunciation</strong><span>Click one word to hear only that word.</span></div>
+                    <button className={wordStudyMode ? "active" : ""} onClick={() => { setWordStudyMode((current) => !current); setSelectedWordKey(""); }} aria-pressed={wordStudyMode}>
+                      {wordStudyMode ? "On" : "Off"}
+                    </button>
+                  </div>
+                  {recentWords.length > 0 && (
+                    <div className="recent-words">
+                      <span>RECENT WORDS</span>
+                      <div>{recentWords.map((entry) => <button key={entry.key} onClick={() => speakSelectedWord(entry.word)}>{entry.word}</button>)}</div>
+                    </div>
+                  )}
                   {selectedWord && (
                     <div className="word-lookup-card">
                       <span>SELECTED WORD</span>
@@ -871,7 +941,7 @@ export default function Home() {
                       ) : <p>Showing key original-language words for this passage. A full concordance connection can map every selected English word.</p>}
                     </div>
                   )}
-                  <div className="lexicon-intro-row"><p className="lexicon-intro">Select a word in the passage or hear these key terms.</p><button onClick={() => readOriginalWords(activeLexicon)}>▶ Read aloud</button></div>
+                  <div className="lexicon-intro-row"><p className="lexicon-intro">{wordStudyMode ? "Word pronunciation is on. Select any word in the passage." : "Turn on word pronunciation above, or hear these key terms."}</p><button onClick={() => readOriginalWords(activeLexicon)}>▶ Read aloud</button></div>
                   <div className="lexicon-list">
                     {activeLexicon.map((entry) => (
                       <div key={entry.number} className="lexicon-card">
