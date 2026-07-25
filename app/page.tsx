@@ -129,11 +129,14 @@ export default function Home() {
   const [voiceName, setVoiceName] = useState("");
   const [savedAudioChapters, setSavedAudioChapters] = useState<Set<string>>(new Set());
   const [highlights, setHighlights] = useState<Record<string, HighlightColor>>({});
+  const [preferredHighlightColor, setPreferredHighlightColor] = useState<HighlightColor>("gold");
   const [selectedForHighlight, setSelectedForHighlight] = useState<number[]>([]);
   const [selectedWord, setSelectedWord] = useState("");
   const [selectedWordKey, setSelectedWordKey] = useState("");
   const [wordStudyMode, setWordStudyMode] = useState(false);
   const [openVerseMenu, setOpenVerseMenu] = useState<number | null>(null);
+  const [inlineNoteVerse, setInlineNoteVerse] = useState<number | null>(null);
+  const [inlineSectionNoteIds, setInlineSectionNoteIds] = useState<number[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [studyTab, setStudyTab] = useState<StudyTab>("commentary");
   const [studyCollapsed, setStudyCollapsed] = useState(false);
@@ -160,11 +163,15 @@ export default function Home() {
       const savedHighlights = localStorage.getItem("selah-highlights-v2");
       const savedNotes = localStorage.getItem("selah-notes-v2");
       const savedPlace = localStorage.getItem("selah-reading-place-v1");
+      const savedHighlightColor = localStorage.getItem("selah-highlight-color") as HighlightColor | null;
+      const savedDockCollapsed = localStorage.getItem("selah-audio-dock-collapsed");
       if (savedHighlights) {
         const parsed = JSON.parse(savedHighlights) as string[] | Record<string, HighlightColor>;
         setHighlights(Array.isArray(parsed) ? Object.fromEntries(parsed.map((key) => [key, "gold" as HighlightColor])) : parsed);
       }
       if (savedNotes) setNotes(JSON.parse(savedNotes));
+      if (savedHighlightColor && ["gold", "sage", "blue", "rose"].includes(savedHighlightColor)) setPreferredHighlightColor(savedHighlightColor);
+      if (savedDockCollapsed === "true") setAudioDockCollapsed(true);
       if (savedPlace) {
         const parsed = JSON.parse(savedPlace) as SavedPlace;
         const savedBook = books.find((book) => book.name === parsed.book);
@@ -269,6 +276,8 @@ export default function Home() {
       setCommentaryWordIndex(null);
       setActiveVerse(null);
       setSelectedForHighlight([]);
+      setInlineNoteVerse(null);
+      setInlineSectionNoteIds([]);
       loadChapter();
     });
     return () => { ignore = true; };
@@ -477,6 +486,10 @@ export default function Home() {
     });
     setHighlights(next);
     localStorage.setItem("selah-highlights-v2", JSON.stringify(next));
+    if (color) {
+      setPreferredHighlightColor(color);
+      localStorage.setItem("selah-highlight-color", color);
+    }
     setSelectedForHighlight([]);
   };
 
@@ -484,7 +497,7 @@ export default function Home() {
     const key = verseKey(id);
     const next = { ...highlights };
     if (next[key]) delete next[key];
-    else next[key] = "gold";
+    else next[key] = preferredHighlightColor;
     setHighlights(next);
     localStorage.setItem("selah-highlights-v2", JSON.stringify(next));
   };
@@ -496,6 +509,10 @@ export default function Home() {
     else delete next[key];
     setHighlights(next);
     localStorage.setItem("selah-highlights-v2", JSON.stringify(next));
+    if (color) {
+      setPreferredHighlightColor(color);
+      localStorage.setItem("selah-highlight-color", color);
+    }
     setOpenVerseMenu(null);
   };
 
@@ -559,6 +576,18 @@ export default function Home() {
 
   const updateNote = (value: string) => {
     const next = { ...notes, [activeNoteKey]: value };
+    setNotes(next);
+    localStorage.setItem("selah-notes-v2", JSON.stringify(next));
+  };
+
+  const updateVerseNote = (verseId: number, value: string) => {
+    const next = { ...notes, [verseKey(verseId)]: value };
+    setNotes(next);
+    localStorage.setItem("selah-notes-v2", JSON.stringify(next));
+  };
+
+  const updateNoteByKey = (key: string, value: string) => {
+    const next = { ...notes, [key]: value };
     setNotes(next);
     localStorage.setItem("selah-notes-v2", JSON.stringify(next));
   };
@@ -628,6 +657,8 @@ export default function Home() {
       value,
     }));
   const noteValue = notes[activeNoteKey] || "";
+  const inlineSectionNoteKey = `${passageKey}-section-${inlineSectionNoteIds.join("_")}`;
+  const inlineSectionVerses = verses.filter((verse) => inlineSectionNoteIds.includes(verse.id));
   const isCurrentPlaceBookmarked = bookmark?.book === selectedBook.name && bookmark.chapter === chapter;
   const selectedBookIndex = books.findIndex((book) => book.name === selectedBook.name);
   const hasPreviousChapter = selectedBookIndex > 0 || chapter > 1;
@@ -770,7 +801,7 @@ export default function Home() {
                 const highlightColor = highlights[verseKey(verse.id)];
                 const isBatchSelected = selectedForHighlight.includes(verse.id);
                 return (
-                  <div key={verse.id} id={`verse-${verse.id}`} className={`verse-row ${isActive ? "reading" : ""} ${isSelected ? "selected" : ""} ${highlightColor ? `highlighted highlight-${highlightColor}` : ""} ${isBatchSelected ? "batch-selected" : ""}`}>
+                  <div key={verse.id} id={`verse-${verse.id}`} className={`verse-row ${isActive ? "reading" : ""} ${isSelected ? "selected" : ""} ${highlightColor ? `highlighted highlight-${highlightColor}` : ""} ${isBatchSelected ? "batch-selected" : ""} ${inlineNoteVerse === verse.id ? "note-open" : ""}`}>
                     <button className="verse-number" onClick={() => toggleVerseSelection(verse.id)} aria-label={`${isBatchSelected ? "Remove" : "Add"} ${verse.reference} ${isBatchSelected ? "from" : "to"} highlight selection`}>{isBatchSelected ? "✓" : verse.id}</button>
                     <p
                       role="button"
@@ -805,13 +836,36 @@ export default function Home() {
                           <div className="verse-menu-heading"><strong>{verse.reference}</strong><button onClick={() => setOpenVerseMenu(null)} aria-label="Close verse menu">×</button></div>
                           <span>Highlight color</span>
                           <div className="verse-color-row">
-                            {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => <button key={color} className={`color-swatch ${color} ${highlightColor === color ? "selected" : ""}`} onClick={() => setVerseHighlight(verse.id, color)} aria-label={`Highlight ${color}`} />)}
+                            {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => <button key={color} className={`color-swatch ${color} ${highlightColor === color ? "selected" : ""}`} onClick={() => setVerseHighlight(verse.id, color)} aria-label={`Highlight ${color}`} title={preferredHighlightColor === color ? "Preferred highlight color" : undefined} />)}
                             {highlightColor && <button className="remove-color" onClick={() => setVerseHighlight(verse.id)} aria-label="Remove highlight">Clear</button>}
                           </div>
-                          <button className="open-note-action" onClick={() => { setSelectedVerse(verse.id); setStudyTab("notes"); setStudyCollapsed(false); setMobileStudyOpen(true); setOpenVerseMenu(null); }}>⌑ Open note</button>
+                          <button className="open-note-action" onClick={() => { setSelectedVerse(verse.id); setInlineNoteVerse(verse.id); setOpenVerseMenu(null); }}>⌑ Write a note</button>
                         </div>
                       )}
                     </div>
+                    {inlineNoteVerse === verse.id && (
+                      <div className="inline-note-editor">
+                        <div className="inline-note-heading">
+                          <div><strong>Note on {verse.reference}</strong><span>{verse.text}</span></div>
+                          <button onClick={() => setInlineNoteVerse(null)} aria-label={`Close note for ${verse.reference}`}>×</button>
+                        </div>
+                        <textarea autoFocus value={notes[verseKey(verse.id)] || ""} onChange={(event) => updateVerseNote(verse.id, event.target.value)} placeholder="Write your thoughts while keeping the verse in view…" aria-label={`Note for ${verse.reference}`} />
+                        <small>✓ Saved on this device</small>
+                      </div>
+                    )}
+                    {inlineSectionNoteIds.at(-1) === verse.id && (
+                      <div className="inline-note-editor section-note-editor">
+                        <div className="inline-note-heading">
+                          <div>
+                            <strong>Note on {selectedBook.name} {chapter}:{inlineSectionNoteIds[0]}–{inlineSectionNoteIds.at(-1)}</strong>
+                            <span>{inlineSectionVerses.map((item) => `${item.id}. ${item.text}`).join(" ")}</span>
+                          </div>
+                          <button onClick={() => setInlineSectionNoteIds([])} aria-label="Close section note">×</button>
+                        </div>
+                        <textarea autoFocus value={notes[inlineSectionNoteKey] || ""} onChange={(event) => updateNoteByKey(inlineSectionNoteKey, event.target.value)} placeholder="Write your thoughts about this section…" aria-label={`Note for ${selectedBook.name} ${chapter}:${inlineSectionNoteIds.join(", ")}`} />
+                        <small>✓ Saved on this device</small>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -822,8 +876,8 @@ export default function Home() {
             <div className="highlight-toolbar" role="toolbar" aria-label="Highlight selected verses">
               <strong>{selectedForHighlight.length} {selectedForHighlight.length === 1 ? "verse" : "verses"} selected</strong>
               <span>Highlight:</span>
-              {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => <button key={color} className={`color-swatch ${color}`} onClick={() => applyHighlight(color)} aria-label={`Highlight ${color}`} />)}
-              <button className="section-note-action" onClick={() => { setSelectedVerse(selectedSectionIds[0]); setStudyTab("notes"); setStudyCollapsed(false); setMobileStudyOpen(true); }}>✎ Add section note</button>
+              {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => <button key={color} className={`color-swatch ${color} ${preferredHighlightColor === color ? "preferred" : ""}`} onClick={() => applyHighlight(color)} aria-label={`Highlight ${color}`} />)}
+              <button className="section-note-action" onClick={() => { setInlineNoteVerse(null); setInlineSectionNoteIds(selectedSectionIds); setSelectedForHighlight([]); }}>✎ Add section note</button>
               <button className="clear-highlight" onClick={() => applyHighlight()} aria-label="Remove highlighting">Clear</button>
               <button className="cancel-selection" onClick={() => setSelectedForHighlight([])} aria-label="Cancel selection">×</button>
             </div>
@@ -982,14 +1036,14 @@ export default function Home() {
             <label><span>Speed</span><input type="range" min="0.7" max="1.25" step="0.05" value={rate} onChange={(event) => setRate(Number(event.target.value))} /><strong>{rate.toFixed(2)}×</strong></label>
           </div>
         )}
-        {!audioDockCollapsed && <div className="now-reading"><span className="audio-pulse">◖</span><div><small>{isPaused ? "PAUSED" : isReading ? "READING" : "READ ALOUD"}</small><strong>{activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}</strong></div></div>}
+        {!audioDockCollapsed && <div className="now-reading"><span className="audio-pulse">◖</span><div><small>{isPaused ? "PAUSED" : isReading ? "READING" : "READ ALOUD"}</small><strong title={activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}>{activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}</strong></div></div>}
         <div className="transport">
           <button className="skip-button" aria-label="Previous verse" onClick={() => jumpToVerse(Math.max(verses[0]?.id || 1, (activeVerse || selectedVerse) - 1))}>‹<span>|</span></button>
           {!isReading ? <button className="play-button" onClick={() => startReading()} aria-label="Start read aloud">▶</button> : <button className="play-button" onClick={togglePause} aria-label={isPaused ? "Resume read aloud" : "Pause read aloud"}>{isPaused ? "▶" : "Ⅱ"}</button>}
           <button className="skip-button" aria-label="Next verse" onClick={() => jumpToVerse(Math.min(verses.at(-1)?.id || 1, (activeVerse || selectedVerse) + 1))}><span>|</span>›</button>
         </div>
         {!audioDockCollapsed && <button className="audio-settings-button" onClick={() => setAudioSettingsOpen(!audioSettingsOpen)} aria-label="Audio voice and speed settings">•••</button>}
-        <button className="audio-collapse-button" onClick={() => { setAudioDockCollapsed(!audioDockCollapsed); setAudioSettingsOpen(false); }} aria-label={audioDockCollapsed ? "Expand read aloud controls" : "Collapse read aloud controls"}>{audioDockCollapsed ? "+" : "−"}</button>
+        <button className="audio-collapse-button" onClick={() => { const next = !audioDockCollapsed; setAudioDockCollapsed(next); localStorage.setItem("selah-audio-dock-collapsed", String(next)); setAudioSettingsOpen(false); }} aria-label={audioDockCollapsed ? "Expand read aloud controls" : "Collapse read aloud controls"}>{audioDockCollapsed ? "+" : "−"}</button>
       </section>
     </main>
   );
