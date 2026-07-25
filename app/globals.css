@@ -215,6 +215,7 @@ button, select { cursor: pointer; }
 .audio-settings-popover input { accent-color: var(--sage); width: 100%; }
 .audio-settings-popover strong { font-size: 9px; }
 .voice-availability { margin: 9px 0 0 62px; color: var(--muted); font: 10px/1.4 Georgia, serif; }
+.voice-error { margin: 8px 0 0 62px; color: #9a3d36; font: 10px/1.4 Georgia, serif; }
 
 @media (max-width: 1050px) {
   .workspace { grid-template-columns: minmax(0, 1fr) 330px; }

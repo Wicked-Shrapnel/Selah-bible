@@ -8,6 +8,14 @@ type Picker = "books" | "chapters" | null;
 type StudyTab = "commentary" | "lexicon" | "notes";
 type HighlightColor = "gold" | "sage" | "blue" | "rose";
 type LexiconEntry = { word: string; transliteration: string; pronunciation: string; spoken: string; number: string; meaning: string; lang: "he-IL" | "el-GR" };
+type CloudVoiceId = "en-US-AndrewNeural" | "en-US-BrianNeural" | "en-US-AvaNeural" | "en-US-EmmaNeural";
+
+const cloudVoices: Array<{ id: CloudVoiceId; label: string; description: string }> = [
+  { id: "en-US-AndrewNeural", label: "Andrew Neural", description: "Natural male narrator" },
+  { id: "en-US-BrianNeural", label: "Brian Neural", description: "Warm, steady male voice" },
+  { id: "en-US-AvaNeural", label: "Ava Neural", description: "Polished female voice" },
+  { id: "en-US-EmmaNeural", label: "Emma Neural", description: "Calmer female voice" },
+];
 
 const books: Book[] = [
   ["Genesis",50,"Old Testament"],["Exodus",40,"Old Testament"],["Leviticus",27,"Old Testament"],["Numbers",36,"Old Testament"],["Deuteronomy",34,"Old Testament"],
@@ -112,6 +120,8 @@ export default function Home() {
   const [rate, setRate] = useState(0.92);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceName, setVoiceName] = useState("");
+  const [cloudVoiceId, setCloudVoiceId] = useState<CloudVoiceId | null>(null);
+  const [cloudVoiceError, setCloudVoiceError] = useState("");
   const [highlights, setHighlights] = useState<Record<string, HighlightColor>>({});
   const [selectedForHighlight, setSelectedForHighlight] = useState<number[]>([]);
   const [selectedWord, setSelectedWord] = useState("");
@@ -122,6 +132,7 @@ export default function Home() {
   const [mobileStudyOpen, setMobileStudyOpen] = useState(false);
   const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
   const cancelled = useRef(false);
+  const cloudAudio = useRef<HTMLAudioElement | null>(null);
 
   const passageKey = `${selectedBook.name}-${chapter}`;
   const verseKey = (id: number) => `${passageKey}-${id}`;
@@ -203,13 +214,40 @@ export default function Home() {
   const stopReading = useCallback(() => {
     cancelled.current = true;
     window.speechSynthesis?.cancel();
+    if (cloudAudio.current) {
+      cloudAudio.current.pause();
+      cloudAudio.current.currentTime = 0;
+      cloudAudio.current = null;
+    }
     setIsReading(false);
     setIsPaused(false);
     setActiveVerse(null);
   }, []);
 
+  const speakCloudText = useCallback(async (text: string, onEnded?: () => void) => {
+    if (!cloudVoiceId) return;
+    setCloudVoiceError("");
+    try {
+      const response = await fetch("/api/speech", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, voice: cloudVoiceId, rate }) });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error || "Azure Speech could not read this passage.");
+      }
+      const audio = new Audio(URL.createObjectURL(await response.blob()));
+      cloudAudio.current = audio;
+      audio.onended = () => { URL.revokeObjectURL(audio.src); cloudAudio.current = null; onEnded?.(); };
+      audio.onerror = () => { URL.revokeObjectURL(audio.src); cloudAudio.current = null; setCloudVoiceError("The cloud voice could not play this passage."); setIsReading(false); setActiveVerse(null); };
+      await audio.play();
+    } catch (error) {
+      setCloudVoiceError(error instanceof Error ? error.message : "Azure Speech could not read this passage.");
+      setIsReading(false);
+      setIsPaused(false);
+      setActiveVerse(null);
+    }
+  }, [cloudVoiceId, rate]);
+
   const speakVerse = useCallback(function speakAtIndex(index: number) {
-    if (!("speechSynthesis" in window) || !verses[index]) {
+    if (!verses[index]) {
       setIsReading(false);
       setActiveVerse(null);
       return;
@@ -218,6 +256,18 @@ export default function Home() {
     setActiveVerse(verse.id);
     setSelectedVerse(verse.id);
     document.getElementById(`verse-${verse.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (cloudVoiceId) {
+      void speakCloudText(verse.text, () => {
+        if (!cancelled.current && index + 1 < verses.length) speakAtIndex(index + 1);
+        else if (!cancelled.current) { setIsReading(false); setActiveVerse(null); }
+      });
+      return;
+    }
+    if (!("speechSynthesis" in window)) {
+      setIsReading(false);
+      setActiveVerse(null);
+      return;
+    }
     const utterance = new SpeechSynthesisUtterance(verse.text);
     utterance.rate = rate;
     utterance.pitch = 0.96;
@@ -235,15 +285,20 @@ export default function Home() {
       setActiveVerse(null);
     };
     window.speechSynthesis.speak(utterance);
-  }, [rate, voiceName, voices, verses]);
+  }, [cloudVoiceId, rate, speakCloudText, voiceName, voices, verses]);
 
   const startReading = useCallback((verseId = selectedVerse) => {
     if (!verses.length) return;
     cancelled.current = false;
     window.speechSynthesis.cancel();
+    if (cloudAudio.current) { cloudAudio.current.pause(); cloudAudio.current.currentTime = 0; cloudAudio.current = null; }
     setIsReading(true);
     setIsPaused(false);
     const index = Math.max(0, verses.findIndex((verse) => verse.id === verseId));
+    if (cloudVoiceId) {
+      void speakCloudText(`${selectedBook.name}. Chapter ${chapter}.`, () => { if (!cancelled.current) speakVerse(index); });
+      return;
+    }
     const introduction = new SpeechSynthesisUtterance(`${selectedBook.name}. Chapter ${chapter}.`);
     introduction.rate = rate;
     introduction.pitch = 0.96;
@@ -253,11 +308,12 @@ export default function Home() {
       if (!cancelled.current) speakVerse(index);
     };
     window.speechSynthesis.speak(introduction);
-  }, [chapter, rate, selectedBook.name, selectedVerse, speakVerse, voiceName, voices, verses]);
+  }, [chapter, cloudVoiceId, rate, selectedBook.name, selectedVerse, speakCloudText, speakVerse, voiceName, voices, verses]);
 
   const jumpToVerse = (id: number) => {
     const index = Math.max(0, verses.findIndex((verse) => verse.id === id));
     window.speechSynthesis.cancel();
+    if (cloudAudio.current) { cloudAudio.current.pause(); cloudAudio.current.currentTime = 0; cloudAudio.current = null; }
     cancelled.current = false;
     setIsReading(true);
     setIsPaused(false);
@@ -265,7 +321,10 @@ export default function Home() {
   };
 
   const togglePause = () => {
-    if (isPaused) window.speechSynthesis.resume();
+    if (cloudAudio.current) {
+      if (isPaused) void cloudAudio.current.play();
+      else cloudAudio.current.pause();
+    } else if (isPaused) window.speechSynthesis.resume();
     else window.speechSynthesis.pause();
     setIsPaused(!isPaused);
   };
@@ -384,7 +443,6 @@ export default function Home() {
   const oldTestament = useMemo(() => books.filter((book) => book.testament === "Old Testament"), []);
   const newTestament = useMemo(() => books.filter((book) => book.testament === "New Testament"), []);
   const sortedVoices = useMemo(() => voices.filter((voice) => voice.lang.toLowerCase().startsWith("en")).sort((a, b) => voiceRank(a) - voiceRank(b) || a.name.localeCompare(b.name)), [voices]);
-  const hasAvaVoice = sortedVoices.some((voice) => voice.name.toLowerCase().includes("microsoft ava"));
   const activeLexicon = selectedBook.testament === "Old Testament" ? hebrewLexicon : greekLexicon;
   const selectedLookupEntry = useMemo(() => {
     const word = selectedWord.toLowerCase();
@@ -609,8 +667,13 @@ export default function Home() {
       <section className={`audio-dock ${audioSettingsOpen ? "settings-open" : ""}`} aria-label="Read aloud controls">
         {audioSettingsOpen && (
           <div className="audio-settings-popover">
-            <label><span>Voice</span><select value={voiceName} onChange={(event) => { setVoiceName(event.target.value); localStorage.setItem("selah-voice", event.target.value); }}>{voices.length === 0 && <option>System voice</option>}{sortedVoices.map((voice) => <option key={voice.name} value={voice.name}>{voice.name}{voice.name.toLowerCase().includes("microsoft david") ? " · default" : ""}</option>)}{!hasAvaVoice && <option disabled>Microsoft Ava · Azure connection required</option>}</select></label>
-            {!hasAvaVoice && <p className="voice-availability">Ava is a Microsoft neural cloud voice, not an installed browser voice on this device. David remains the local default.</p>}
+            <label><span>Voice</span><select value={cloudVoiceId || voiceName || "local"} onChange={(event) => { const value = event.target.value; if (value.startsWith("en-US-")) { setCloudVoiceId(value as CloudVoiceId); setCloudVoiceError(""); } else { setCloudVoiceId(null); const next = value === "local" ? bestVoice(sortedVoices)?.name || "" : value; setVoiceName(next); localStorage.setItem("selah-voice", next); } }}>
+              <option value="local">Installed browser voice{voiceName ? ` · ${voiceName}` : ""}</option>
+              <optgroup label="Microsoft Azure Neural">{cloudVoices.map((voice) => <option key={voice.id} value={voice.id}>{voice.label} · {voice.description}</option>)}</optgroup>
+              <optgroup label="Installed local voices">{sortedVoices.map((voice) => <option key={voice.name} value={voice.name}>{voice.name}{voice.name.toLowerCase().includes("microsoft david") ? " · default" : ""}</option>)}</optgroup>
+            </select></label>
+            <p className="voice-availability">Azure voices run through Microsoft Speech and require <code>AZURE_SPEECH_KEY</code> and <code>AZURE_SPEECH_REGION</code> in the site runtime. David and other installed voices remain available locally.</p>
+            {cloudVoiceError && <p className="voice-error" role="alert">{cloudVoiceError}</p>}
             <label><span>Speed</span><input type="range" min="0.7" max="1.25" step="0.05" value={rate} onChange={(event) => setRate(Number(event.target.value))} /><strong>{rate.toFixed(2)}×</strong></label>
           </div>
         )}
