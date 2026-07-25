@@ -570,7 +570,12 @@ export default function Home() {
     setPicker("chapters");
   };
 
-  const saveReadingPlace = () => {
+  const toggleReadingPlace = () => {
+    if (isCurrentPlaceBookmarked) {
+      localStorage.removeItem("selah-reading-place-v1");
+      setBookmark(null);
+      return;
+    }
     const place = { book: selectedBook.name, chapter };
     localStorage.setItem("selah-reading-place-v1", JSON.stringify(place));
     setBookmark(place);
@@ -624,6 +629,9 @@ export default function Home() {
     }));
   const noteValue = notes[activeNoteKey] || "";
   const isCurrentPlaceBookmarked = bookmark?.book === selectedBook.name && bookmark.chapter === chapter;
+  const selectedBookIndex = books.findIndex((book) => book.name === selectedBook.name);
+  const hasPreviousChapter = selectedBookIndex > 0 || chapter > 1;
+  const hasNextChapter = selectedBookIndex < books.length - 1 || chapter < selectedBook.chapters;
 
   const toggleCommentaryReading = () => {
     if (!activeCommentaryEntry || !("speechSynthesis" in window)) return;
@@ -745,7 +753,7 @@ export default function Home() {
               <p className="eyebrow">{selectedBook.testament.toUpperCase()}</p>
               <div className="book-title-line">
                 <h1>{selectedBook.name}</h1>
-                <button className={isCurrentPlaceBookmarked ? "bookmarked" : ""} onClick={saveReadingPlace} aria-label={`Bookmark ${selectedBook.name} chapter ${chapter}`} title={isCurrentPlaceBookmarked ? "Current reading place saved" : "Save this reading place"}>
+                <button className={isCurrentPlaceBookmarked ? "bookmarked" : ""} onClick={toggleReadingPlace} aria-pressed={isCurrentPlaceBookmarked} aria-label={`${isCurrentPlaceBookmarked ? "Remove bookmark from" : "Bookmark"} ${selectedBook.name} chapter ${chapter}`} title={isCurrentPlaceBookmarked ? "Remove saved reading place" : "Save this reading place"}>
                   <span className="bookmark-glyph" aria-hidden="true" />
                 </button>
               </div>
@@ -957,6 +965,10 @@ export default function Home() {
       </div>
 
       <button className="mobile-study-button" onClick={() => setMobileStudyOpen(true)}>Study tools</button>
+      <nav className={`floating-chapter-navigation ${studyCollapsed ? "study-collapsed" : ""} ${selectedForHighlight.length ? "selection-active" : ""}`} aria-label="Chapter navigation">
+        <button onClick={() => goToAdjacentChapter(-1)} disabled={!hasPreviousChapter} aria-label="Previous chapter" title="Previous chapter">‹</button>
+        <button onClick={() => goToAdjacentChapter(1)} disabled={!hasNextChapter} aria-label="Next chapter" title="Next chapter">›</button>
+      </nav>
 
       <section className={`audio-dock ${audioSettingsOpen ? "settings-open" : ""} ${audioDockCollapsed ? "collapsed" : ""}`} aria-label="Read aloud controls">
         {audioSettingsOpen && !audioDockCollapsed && (

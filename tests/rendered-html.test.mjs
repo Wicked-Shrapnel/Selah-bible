@@ -69,6 +69,8 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /selah-reading-place-v1/);
   assert.match(page, /setPicker\("chapters"\)/);
   assert.match(page, /chapter-dropdown/);
+  assert.match(page, /toggleReadingPlace/);
+  assert.match(page, /floating-chapter-navigation/);
   assert.match(page, /toggleCommentaryReading/);
   assert.match(page, /Read commentary aloud/);
   assert.match(page, /Add section note/);
