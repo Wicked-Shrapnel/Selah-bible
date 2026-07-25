@@ -9,6 +9,10 @@ type StudyTab = "commentary" | "lexicon" | "notes";
 type CommentaryView = "expository" | "historical";
 type HighlightColor = "gold" | "sage" | "blue" | "rose";
 type LexiconEntry = { word: string; transliteration: string; pronunciation: string; spoken: string; number: string; meaning: string; lang: "he-IL" | "el-GR" };
+type OriginalWordToken = { text: string; strongs?: string[] };
+type OriginalLanguageBook = { source: string; verses: Record<string, OriginalWordToken[]> };
+type StrongDictionaryEntry = { lemma: string; transliteration: string; pronunciation: string; definition: string; kjv: string };
+type StrongDictionary = Record<string, StrongDictionaryEntry>;
 type SavedAudioManifest = { chapters: string[] };
 type CommentaryReference = { osis: string; label: string };
 type CommentaryEntry = { anchorVerse: number; verseStart: number; verseEnd: number; heading: string; text: string; references: CommentaryReference[] };
@@ -190,6 +194,8 @@ export default function Home() {
   const [selectedForHighlight, setSelectedForHighlight] = useState<number[]>([]);
   const [selectedWord, setSelectedWord] = useState("");
   const [selectedWordKey, setSelectedWordKey] = useState("");
+  const [selectedOriginalEntries, setSelectedOriginalEntries] = useState<LexiconEntry[]>([]);
+  const [originalLookupStatus, setOriginalLookupStatus] = useState<"idle" | "loading" | "ready" | "unavailable" | "error">("idle");
   const [wordStudyMode, setWordStudyMode] = useState(false);
   const [openVerseMenu, setOpenVerseMenu] = useState<number | null>(null);
   const [inlineNoteVerse, setInlineNoteVerse] = useState<number | null>(null);
@@ -216,6 +222,9 @@ export default function Home() {
   const savedPanelRef = useRef<HTMLDivElement | null>(null);
   const pendingSavedVerse = useRef<number | null>(null);
   const bibleBookCache = useRef<Record<string, BibleSourceBook>>({});
+  const originalLanguageBookCache = useRef<Record<string, OriginalLanguageBook>>({});
+  const strongDictionaryCache = useRef<Partial<Record<"hebrew" | "greek", StrongDictionary>>>({});
+  const wordLookupSession = useRef(0);
   const voicePreferencesLoaded = useRef(false);
   const readingSession = useRef(0);
 
@@ -392,6 +401,14 @@ export default function Home() {
     });
     return () => { ignore = true; };
   }, [selectedBook, chapter, loadBibleChapter]);
+
+  useEffect(() => {
+    wordLookupSession.current += 1;
+    setSelectedWord("");
+    setSelectedWordKey("");
+    setSelectedOriginalEntries([]);
+    setOriginalLookupStatus("idle");
+  }, [selectedBook.name, chapter]);
 
   const stopReading = useCallback(() => {
     readingSession.current += 1;
@@ -646,28 +663,66 @@ export default function Home() {
     setOpenVerseMenu(null);
   };
 
-  const speakSelectedWord = (word: string) => {
-    if (!("speechSynthesis" in window)) return;
-    stopReading();
-    window.setTimeout(() => {
-      const utterance = new SpeechSynthesisUtterance(word);
-      utterance.lang = "en-US";
-      utterance.rate = 0.78;
-      utterance.voice = voices.find((voice) => voice.name === voiceName) || bestVoice(voices) || null;
-      window.speechSynthesis.speak(utterance);
-    }, 90);
-  };
-
-  const selectWord = (word: string, verseId: number, wordKey: string) => {
-    const cleaned = word.replace(/[^A-Za-zÀ-ž'-]/g, "");
+  const selectWord = async (word: string, verseId: number, wordKey: string, wordOrdinal: number, wordOccurrence: number) => {
+    const cleaned = word.replace(/[^\p{L}\p{M}’'-]/gu, "");
     if (!cleaned) return;
+    const lookupSession = ++wordLookupSession.current;
     setSelectedWord(cleaned);
     setSelectedWordKey(wordKey);
+    setSelectedOriginalEntries([]);
+    setOriginalLookupStatus("loading");
     setSelectedVerse(verseId);
     setStudyTab("lexicon");
     setStudyCollapsed(false);
     setMobileStudyOpen(true);
-    speakSelectedWord(cleaned);
+
+    try {
+      const bookFile = bibleFileName(selectedBook.name);
+      let languageBook = originalLanguageBookCache.current[bookFile];
+      if (!languageBook) {
+        const response = await fetch(`/original-language/kjv/${bookFile}`);
+        if (!response.ok) throw new Error("Original-language tagging unavailable");
+        languageBook = await response.json() as OriginalLanguageBook;
+        originalLanguageBookCache.current[bookFile] = languageBook;
+      }
+
+      const language = selectedBook.testament === "Old Testament" ? "hebrew" : "greek";
+      let dictionary = strongDictionaryCache.current[language];
+      if (!dictionary) {
+        const response = await fetch(`/original-language/kjv/${language}.json`);
+        if (!response.ok) throw new Error("Strong's dictionary unavailable");
+        dictionary = await response.json() as StrongDictionary;
+        strongDictionaryCache.current[language] = dictionary;
+      }
+
+      if (lookupSession !== wordLookupSession.current) return;
+      const verseWords = languageBook.verses[`${chapter}:${verseId}`] || [];
+      const normalizedSelected = cleaned.toLocaleLowerCase();
+      let taggedWord = verseWords[wordOrdinal];
+      if (!taggedWord || taggedWord.text.toLocaleLowerCase() !== normalizedSelected) {
+        taggedWord = verseWords.filter((candidate) => candidate.text.toLocaleLowerCase() === normalizedSelected)[wordOccurrence];
+      }
+
+      const lang = language === "hebrew" ? "he-IL" : "el-GR";
+      const entries = (taggedWord?.strongs || []).flatMap((number) => {
+        const entry = dictionary?.[number];
+        if (!entry) return [];
+        return [{
+          word: entry.lemma,
+          transliteration: entry.transliteration,
+          pronunciation: entry.pronunciation,
+          spoken: entry.pronunciation || entry.transliteration,
+          number,
+          meaning: entry.definition || entry.kjv,
+          lang,
+        } satisfies LexiconEntry];
+      });
+      setSelectedOriginalEntries(entries);
+      setOriginalLookupStatus(entries.length ? "ready" : "unavailable");
+    } catch {
+      if (lookupSession !== wordLookupSession.current) return;
+      setOriginalLookupStatus("error");
+    }
   };
 
   const pronounceOriginal = (entry: LexiconEntry) => {
@@ -783,14 +838,6 @@ export default function Home() {
     const selected = sortedVoices.filter((voice) => enabledVoiceSet.has(voice.name));
     return selected.length ? selected : sortedVoices;
   }, [enabledVoiceSet, sortedVoices]);
-  const activeLexicon = selectedBook.testament === "Old Testament" ? hebrewLexicon : greekLexicon;
-  const selectedLookupEntry = useMemo(() => {
-    const word = selectedWord.toLowerCase();
-    if (["beginning", "first", "origin"].includes(word)) return activeLexicon[0];
-    if (["god", "gods", "divine"].includes(word)) return activeLexicon[1];
-    if (["created", "create", "made", "word"].includes(word)) return activeLexicon[2];
-    return undefined;
-  }, [activeLexicon, selectedWord]);
   const activeCommentaryEntry = useMemo(() => {
     const entries = commentaryData?.entries || [];
     return entries.find((entry) => selectedVerse >= entry.verseStart && selectedVerse <= entry.verseEnd)
@@ -1167,6 +1214,8 @@ export default function Home() {
                 const isNoteTarget = inlineNoteVerse === verse.id || inlineSectionNoteIds.includes(verse.id);
                 const hasSavedNote = savedNoteVerseIds.has(verse.id);
                 const isRedLetter = Boolean(redLetterMap[verse.reference]);
+                let verseWordOrdinal = -1;
+                const verseWordOccurrences: Record<string, number> = {};
                 return (
                   <div key={verse.id} id={`verse-${verse.id}`} className={`verse-row ${isActive ? "reading" : ""} ${isSelected ? "selected" : ""} ${highlightColor ? `highlighted highlight-${highlightColor}` : ""} ${isBatchSelected ? "batch-selected" : ""} ${isNoteTarget ? "note-target" : ""} ${isRedLetter ? "red-letter-verse" : ""}`}>
                     <button className="verse-number" onClick={() => toggleVerseSelection(verse.id)} aria-label={`${isBatchSelected ? "Remove" : "Add"} ${verse.reference} ${isBatchSelected ? "from" : "to"} highlight selection`}>{isBatchSelected ? "✓" : verse.id}</button>
@@ -1180,13 +1229,18 @@ export default function Home() {
                     >
                       {verse.text.split(/(\s+)/).map((token, index) => {
                         const wordKey = `${passageKey}-${verse.id}-${index}`;
+                        if (!/^\s+$/.test(token)) verseWordOrdinal += 1;
+                        const currentWordOrdinal = verseWordOrdinal;
+                        const normalizedToken = token.replace(/[^\p{L}\p{M}’'-]/gu, "").toLocaleLowerCase();
+                        const currentWordOccurrence = verseWordOccurrences[normalizedToken] || 0;
+                        if (!/^\s+$/.test(token)) verseWordOccurrences[normalizedToken] = currentWordOccurrence + 1;
                         return /^\s+$/.test(token) ? token : (
                           <button
                             key={`${token}-${index}`}
                             className={`verse-word ${wordStudyMode ? "pronunciation-ready" : ""} ${selectedWordKey === wordKey ? "word-selected" : ""} ${isRedLetter ? "red-letter-word" : ""}`}
                             onClick={(event) => {
                               event.stopPropagation();
-                              if (wordStudyMode) selectWord(token, verse.id, wordKey);
+                              if (wordStudyMode) void selectWord(token, verse.id, wordKey, currentWordOrdinal, currentWordOccurrence);
                               else toggleVerseSelection(verse.id);
                             }}
                             aria-label={wordStudyMode ? `Pronounce and look up ${token.replace(/[^A-Za-zÀ-ž'-]/g, "")}` : `Select ${verse.reference}`}
@@ -1269,7 +1323,7 @@ export default function Home() {
           {studyCollapsed ? (
             <div className="study-rail">
               <button onClick={() => { setStudyCollapsed(false); setStudyTab("commentary"); }} aria-label="Open commentary"><span>¶</span><i>Commentary</i></button>
-              <button onClick={() => { setStudyCollapsed(false); setStudyTab("lexicon"); }} aria-label="Open original language"><span>א</span><i>Original language</i></button>
+              <button onClick={() => { setStudyCollapsed(false); setStudyTab("lexicon"); setWordStudyMode(true); }} aria-label="Open original language"><span>א</span><i>Original language</i></button>
               <button onClick={() => { setStudyCollapsed(false); setStudyTab("notes"); }} aria-label="Open notes"><span>⌑</span><i>Notes</i></button>
             </div>
           ) : (
@@ -1277,7 +1331,7 @@ export default function Home() {
               <button className="close-study" onClick={() => setMobileStudyOpen(false)} aria-label="Close study panel">×</button>
               <div className="study-tabs" role="tablist">
                 <button className={studyTab === "commentary" ? "active" : ""} onClick={() => setStudyTab("commentary")} role="tab">Commentary</button>
-                <button className={studyTab === "lexicon" ? "active" : ""} onClick={() => setStudyTab("lexicon")} role="tab">Original language</button>
+                <button className={studyTab === "lexicon" ? "active" : ""} onClick={() => { setStudyTab("lexicon"); setWordStudyMode(true); }} role="tab">Original language</button>
                 <button className={studyTab === "notes" ? "active" : ""} onClick={() => setStudyTab("notes")} role="tab">Notes</button>
               </div>
               {studyTab === "commentary" ? (
@@ -1402,7 +1456,7 @@ export default function Home() {
                 <div className="study-content">
                   <div className="study-reference"><span>{selectedBook.testament === "Old Testament" ? "Hebrew" : "Greek"} · {selected?.reference || `${selectedBook.name} ${chapter}`}</span><button aria-label="More lexicon options">•••</button></div>
                   <div className="word-study-control">
-                    <div><strong>Word pronunciation</strong><span>Click one word to hear only that word.</span></div>
+                    <div><strong>Select an individual word</strong><span>Its Hebrew or Greek source and pronunciation will appear here.</span></div>
                     <button className={wordStudyMode ? "active" : ""} onClick={() => { setWordStudyMode((current) => !current); setSelectedWordKey(""); }} aria-pressed={wordStudyMode}>
                       {wordStudyMode ? "On" : "Off"}
                     </button>
@@ -1411,28 +1465,28 @@ export default function Home() {
                     <div className="word-lookup-card">
                       <span>SELECTED WORD</span>
                       <h3>{selectedWord}</h3>
-                      {selectedLookupEntry ? (
-                        <div className="lookup-match">
-                          <b>{selectedLookupEntry.word}</b>
-                          <p>{selectedLookupEntry.transliteration} · {selectedLookupEntry.meaning}</p>
-                          <button onClick={() => pronounceOriginal(selectedLookupEntry)}>▶ Hear pronunciation</button>
+                      {originalLookupStatus === "loading" && <p>Finding the original-language word…</p>}
+                      {originalLookupStatus === "unavailable" && <p>This English word was supplied by the translators or is part of a larger phrase, so it has no separate Strong&apos;s entry here.</p>}
+                      {originalLookupStatus === "error" && <p>The local original-language file could not be opened. Please try this word again.</p>}
+                      {originalLookupStatus === "ready" && selectedOriginalEntries.map((entry) => (
+                        <div className="lookup-match" key={entry.number}>
+                          <div className="lookup-original-line">
+                            <b lang={entry.lang}>{entry.word}</b>
+                            <span>{entry.number}</span>
+                          </div>
+                          <p><i>{entry.transliteration}</i>{entry.pronunciation ? ` · ${entry.pronunciation}` : ""}</p>
+                          <p>{entry.meaning}</p>
+                          <button onClick={() => pronounceOriginal(entry)}>▶ Hear {entry.transliteration || "pronunciation"}</button>
                         </div>
-                      ) : <p>Showing key original-language words for this passage. A full concordance connection can map every selected English word.</p>}
+                      ))}
                     </div>
                   )}
-                  <div className="lexicon-intro-row"><p className="lexicon-intro">{wordStudyMode ? "Word pronunciation is on. Select any word in the passage." : "Turn on word pronunciation above, or hear these key terms."}</p><button onClick={() => readOriginalWords(activeLexicon)}>▶ Read aloud</button></div>
-                  <div className="lexicon-list">
-                    {activeLexicon.map((entry) => (
-                      <div key={entry.number} className="lexicon-card">
-                        <span className="hebrew">{entry.word}</span>
-                        <span className="transliteration">{entry.transliteration}</span>
-                        <span className="strongs">{entry.number}</span>
-                        <strong>{entry.meaning}</strong>
-                        <small>Pronounced {entry.pronunciation}</small>
-                        <button className="pronounce-button" onClick={() => pronounceOriginal(entry)} aria-label={`Hear ${entry.transliteration}`}>▶ Hear</button>
-                      </div>
-                    ))}
+                  <div className="lexicon-intro-row">
+                    <p className="lexicon-intro">{wordStudyMode ? "Choose any single word in the chapter. A new choice replaces the previous one." : "Turn word selection on to look up a word."}</p>
+                    {selectedOriginalEntries.length > 1 && <button onClick={() => readOriginalWords(selectedOriginalEntries)}>▶ Hear all</button>}
                   </div>
+                  {!selectedWord && <div className="lexicon-empty-state"><span aria-hidden="true">א · α</span><p>Select a word in the Bible text to see its original form, transliteration, meaning, and pronunciation.</p></div>}
+                  <p className="lexicon-attribution">Word tagging from the public-domain CrossWire KJV; dictionary data from Open Scriptures.</p>
                 </div>
               ) : (
                 <div className="study-content notes-tab-content">

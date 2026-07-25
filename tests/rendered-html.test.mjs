@@ -81,6 +81,27 @@ test("bundles local Bible files and red-letter metadata", async () => {
   assert.ok(redLetter["Matthew 5:3"]);
 });
 
+test("bundles word-level Hebrew and Greek lookup data", async () => {
+  const [genesisText, johnText, hebrewText, greekText, sourceNotes] = await Promise.all([
+    readFile(new URL("../public/original-language/kjv/Genesis.json", import.meta.url), "utf8"),
+    readFile(new URL("../public/original-language/kjv/John.json", import.meta.url), "utf8"),
+    readFile(new URL("../public/original-language/kjv/hebrew.json", import.meta.url), "utf8"),
+    readFile(new URL("../public/original-language/kjv/greek.json", import.meta.url), "utf8"),
+    readFile(new URL("../public/original-language/kjv/README.txt", import.meta.url), "utf8"),
+  ]);
+  const genesis = JSON.parse(genesisText);
+  const john = JSON.parse(johnText);
+  const hebrew = JSON.parse(hebrewText);
+  const greek = JSON.parse(greekText);
+
+  assert.deepEqual(genesis.verses["1:1"][2].strongs, ["H7225"]);
+  assert.equal(hebrew.H7225.lemma, "רֵאשִׁית");
+  assert.ok(john.verses["1:1"].some((word) => word.strongs?.includes("G3056")));
+  assert.equal(greek.G3056.lemma, "λόγος");
+  assert.match(sourceNotes, /CrossWire Bible Society KJV 3\.1/);
+  assert.match(sourceNotes, /Open Scriptures/);
+});
+
 test("includes searchable passage selection, saved place, and commentary audio", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(page, /placeholder="Search for a book/);
@@ -123,6 +144,9 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /historicalCommentaryUrl/);
   assert.match(page, /future side-by-side media view/);
   assert.match(page, /wordStudyMode/);
+  assert.match(page, /originalLanguageBookCache/);
+  assert.match(page, /selectedOriginalEntries/);
+  assert.match(page, /Hear \{entry\.transliteration/);
   assert.match(page, /loadBibleChapter/);
   assert.match(page, /bible\/kjv\/red-letter\.json/);
   assert.doesNotMatch(page, /recentWords|RECENT WORDS/);
