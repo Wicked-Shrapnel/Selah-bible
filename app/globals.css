@@ -85,6 +85,7 @@ button, select { cursor: pointer; }
 .verse-list { max-width: 760px; margin: 0 auto; }
 .verse-row { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 6px; align-items: start; margin: 2px -18px; padding: 9px 13px 9px 10px; border-radius: 9px; border-left: 3px solid transparent; transition: background .18s ease, border-color .18s ease, transform .18s ease; }
 .verse-row:hover, .verse-row.selected { background: #f7f6f1; }
+.verse-row.note-target { background: #eeefeb; border-left-color: #aab8b0; }
 .verse-row.reading { background: var(--sage-soft); border-left-color: var(--sage); transform: translateX(3px); }
 .verse-row.highlight-gold:not(.reading) { background: linear-gradient(90deg, #f6e7a8, rgba(246,231,168,.34)); }
 .verse-row.highlight-sage:not(.reading) { background: linear-gradient(90deg, #cfe3d5, rgba(207,227,213,.32)); }
@@ -94,6 +95,7 @@ button, select { cursor: pointer; }
 .verse-row.batch-selected p { text-decoration-line: underline; text-decoration-style: dotted; text-decoration-color: #7d9a89; text-decoration-thickness: 1px; text-underline-offset: 6px; }
 .verse-number { border: 0; background: transparent; color: #a89b79; font-size: 10px; font-weight: 850; padding: 7px 0 0; }
 .verse-row.batch-selected .verse-number { width: 24px; height: 24px; margin-top: 2px; padding: 0; border-radius: 50%; color: white; background: var(--sage); }
+.saved-note-indicator { position: absolute; top: 34px; left: 19px; color: #9b7625; font: 700 10px/1 Georgia, serif; }
 .verse-row p { margin: 0; color: #31352f; font: 18px/1.67 Georgia, "Times New Roman", serif; cursor: pointer; }
 .verse-row.reading p { color: #173d30; }
 .verse-word { display: inline; margin: 0; padding: 1px 0; border: 0; border-radius: 3px; background: transparent; color: inherit; font: inherit; text-align: inherit; cursor: text; }
@@ -125,6 +127,8 @@ button, select { cursor: pointer; }
 .inline-note-heading strong { color: var(--sage); font: 700 11px Georgia, serif; }
 .inline-note-heading span { max-width: 580px; margin-top: 4px; color: #73776f; font: italic 10px/1.35 Georgia, serif; }
 .inline-note-heading button { width: 24px; height: 24px; flex: 0 0 auto; padding: 0; border: 0; border-radius: 50%; color: var(--muted); background: #eeece5; font-size: 17px; }
+.inline-note-actions { display: flex; flex: 0 0 auto; gap: 6px; }
+.inline-note-actions button.save-note { color: white; background: var(--sage); font-size: 13px; font-weight: 850; }
 .inline-note-editor textarea { display: block; width: 100%; min-height: 92px; resize: vertical; padding: 11px; border: 1px solid #d9d5ca; border-radius: 8px; outline: 0; color: var(--ink); background: white; font: 13px/1.5 Georgia, serif; }
 .inline-note-editor textarea:focus { border-color: #91a89e; box-shadow: 0 0 0 3px rgba(52,92,76,.08); }
 .inline-note-editor > small { display: block; margin-top: 7px; color: #879087; font-size: 8px; text-align: right; }

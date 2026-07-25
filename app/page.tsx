@@ -137,6 +137,7 @@ export default function Home() {
   const [openVerseMenu, setOpenVerseMenu] = useState<number | null>(null);
   const [inlineNoteVerse, setInlineNoteVerse] = useState<number | null>(null);
   const [inlineSectionNoteIds, setInlineSectionNoteIds] = useState<number[]>([]);
+  const [inlineNoteDraft, setInlineNoteDraft] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [studyTab, setStudyTab] = useState<StudyTab>("commentary");
   const [studyCollapsed, setStudyCollapsed] = useState(false);
@@ -278,6 +279,7 @@ export default function Home() {
       setSelectedForHighlight([]);
       setInlineNoteVerse(null);
       setInlineSectionNoteIds([]);
+      setInlineNoteDraft("");
       loadChapter();
     });
     return () => { ignore = true; };
@@ -656,6 +658,10 @@ export default function Home() {
       reference: `${selectedBook.name} ${chapter}:${key.split("-section-")[1].split("_").join(", ")}`,
       value,
     }));
+  const savedNoteVerseIds = new Set<number>([
+    ...chapterNotes.map((verse) => verse.id),
+    ...sectionNotes.flatMap((note) => note.key.split("-section-")[1].split("_").map(Number)),
+  ]);
   const noteValue = notes[activeNoteKey] || "";
   const inlineSectionNoteKey = `${passageKey}-section-${inlineSectionNoteIds.join("_")}`;
   const inlineSectionVerses = verses.filter((verse) => inlineSectionNoteIds.includes(verse.id));
@@ -800,9 +806,12 @@ export default function Home() {
                 const isSelected = selectedVerse === verse.id;
                 const highlightColor = highlights[verseKey(verse.id)];
                 const isBatchSelected = selectedForHighlight.includes(verse.id);
+                const isNoteTarget = inlineNoteVerse === verse.id || inlineSectionNoteIds.includes(verse.id);
+                const hasSavedNote = savedNoteVerseIds.has(verse.id);
                 return (
-                  <div key={verse.id} id={`verse-${verse.id}`} className={`verse-row ${isActive ? "reading" : ""} ${isSelected ? "selected" : ""} ${highlightColor ? `highlighted highlight-${highlightColor}` : ""} ${isBatchSelected ? "batch-selected" : ""} ${inlineNoteVerse === verse.id ? "note-open" : ""}`}>
+                  <div key={verse.id} id={`verse-${verse.id}`} className={`verse-row ${isActive ? "reading" : ""} ${isSelected ? "selected" : ""} ${highlightColor ? `highlighted highlight-${highlightColor}` : ""} ${isBatchSelected ? "batch-selected" : ""} ${isNoteTarget ? "note-target" : ""}`}>
                     <button className="verse-number" onClick={() => toggleVerseSelection(verse.id)} aria-label={`${isBatchSelected ? "Remove" : "Add"} ${verse.reference} ${isBatchSelected ? "from" : "to"} highlight selection`}>{isBatchSelected ? "✓" : verse.id}</button>
+                    {hasSavedNote && <span className="saved-note-indicator" aria-label={`A note is saved for ${verse.reference}`} title={`Note saved for ${verse.reference}`}>✎</span>}
                     <p
                       role="button"
                       tabIndex={0}
@@ -839,7 +848,7 @@ export default function Home() {
                             {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => <button key={color} className={`color-swatch ${color} ${highlightColor === color ? "selected" : ""}`} onClick={() => setVerseHighlight(verse.id, color)} aria-label={`Highlight ${color}`} title={preferredHighlightColor === color ? "Preferred highlight color" : undefined} />)}
                             {highlightColor && <button className="remove-color" onClick={() => setVerseHighlight(verse.id)} aria-label="Remove highlight">Clear</button>}
                           </div>
-                          <button className="open-note-action" onClick={() => { setSelectedVerse(verse.id); setInlineNoteVerse(verse.id); setOpenVerseMenu(null); }}>⌑ Write a note</button>
+                          <button className="open-note-action" onClick={() => { setSelectedVerse(verse.id); setInlineSectionNoteIds([]); setInlineNoteVerse(verse.id); setInlineNoteDraft(notes[verseKey(verse.id)] || ""); setOpenVerseMenu(null); }}>⌑ Write a note</button>
                         </div>
                       )}
                     </div>
@@ -847,10 +856,13 @@ export default function Home() {
                       <div className="inline-note-editor">
                         <div className="inline-note-heading">
                           <div><strong>Note on {verse.reference}</strong><span>{verse.text}</span></div>
-                          <button onClick={() => setInlineNoteVerse(null)} aria-label={`Close note for ${verse.reference}`}>×</button>
+                          <div className="inline-note-actions">
+                            <button className="save-note" onClick={() => { updateVerseNote(verse.id, inlineNoteDraft); setInlineNoteVerse(null); setInlineNoteDraft(""); }} aria-label={`Save note for ${verse.reference}`}>✓</button>
+                            <button onClick={() => { setInlineNoteVerse(null); setInlineNoteDraft(""); }} aria-label={`Cancel note for ${verse.reference}`}>×</button>
+                          </div>
                         </div>
-                        <textarea autoFocus value={notes[verseKey(verse.id)] || ""} onChange={(event) => updateVerseNote(verse.id, event.target.value)} placeholder="Write your thoughts while keeping the verse in view…" aria-label={`Note for ${verse.reference}`} />
-                        <small>✓ Saved on this device</small>
+                        <textarea autoFocus value={inlineNoteDraft} onChange={(event) => setInlineNoteDraft(event.target.value)} placeholder="Write your thoughts while keeping the verse in view…" aria-label={`Note for ${verse.reference}`} />
+                        <small>Press ✓ to save this note</small>
                       </div>
                     )}
                     {inlineSectionNoteIds.at(-1) === verse.id && (
@@ -860,10 +872,13 @@ export default function Home() {
                             <strong>Note on {selectedBook.name} {chapter}:{inlineSectionNoteIds[0]}–{inlineSectionNoteIds.at(-1)}</strong>
                             <span>{inlineSectionVerses.map((item) => `${item.id}. ${item.text}`).join(" ")}</span>
                           </div>
-                          <button onClick={() => setInlineSectionNoteIds([])} aria-label="Close section note">×</button>
+                          <div className="inline-note-actions">
+                            <button className="save-note" onClick={() => { updateNoteByKey(inlineSectionNoteKey, inlineNoteDraft); setInlineSectionNoteIds([]); setInlineNoteDraft(""); }} aria-label="Save section note">✓</button>
+                            <button onClick={() => { setInlineSectionNoteIds([]); setInlineNoteDraft(""); }} aria-label="Cancel section note">×</button>
+                          </div>
                         </div>
-                        <textarea autoFocus value={notes[inlineSectionNoteKey] || ""} onChange={(event) => updateNoteByKey(inlineSectionNoteKey, event.target.value)} placeholder="Write your thoughts about this section…" aria-label={`Note for ${selectedBook.name} ${chapter}:${inlineSectionNoteIds.join(", ")}`} />
-                        <small>✓ Saved on this device</small>
+                        <textarea autoFocus value={inlineNoteDraft} onChange={(event) => setInlineNoteDraft(event.target.value)} placeholder="Write your thoughts about this section…" aria-label={`Note for ${selectedBook.name} ${chapter}:${inlineSectionNoteIds.join(", ")}`} />
+                        <small>Press ✓ to save this note</small>
                       </div>
                     )}
                   </div>
@@ -877,7 +892,7 @@ export default function Home() {
               <strong>{selectedForHighlight.length} {selectedForHighlight.length === 1 ? "verse" : "verses"} selected</strong>
               <span>Highlight:</span>
               {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => <button key={color} className={`color-swatch ${color} ${preferredHighlightColor === color ? "preferred" : ""}`} onClick={() => applyHighlight(color)} aria-label={`Highlight ${color}`} />)}
-              <button className="section-note-action" onClick={() => { setInlineNoteVerse(null); setInlineSectionNoteIds(selectedSectionIds); setSelectedForHighlight([]); }}>✎ Add section note</button>
+              <button className="section-note-action" onClick={() => { const key = `${passageKey}-section-${selectedSectionIds.join("_")}`; setInlineNoteVerse(null); setInlineSectionNoteIds(selectedSectionIds); setInlineNoteDraft(notes[key] || ""); setSelectedForHighlight([]); }}>✎ Add section note</button>
               <button className="clear-highlight" onClick={() => applyHighlight()} aria-label="Remove highlighting">Clear</button>
               <button className="cancel-selection" onClick={() => setSelectedForHighlight([])} aria-label="Cancel selection">×</button>
             </div>
