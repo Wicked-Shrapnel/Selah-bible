@@ -137,6 +137,7 @@ export default function Home() {
   const [studyCollapsed, setStudyCollapsed] = useState(false);
   const [mobileStudyOpen, setMobileStudyOpen] = useState(false);
   const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
+  const [audioDockCollapsed, setAudioDockCollapsed] = useState(false);
   const [commentaryData, setCommentaryData] = useState<CommentaryChapter | null>(null);
   const [commentaryStatus, setCommentaryStatus] = useState<"loading" | "ready" | "error">("loading");
   const [bookmark, setBookmark] = useState<SavedPlace | null>(null);
@@ -529,8 +530,7 @@ export default function Home() {
   };
 
   const updateNote = (value: string) => {
-    const key = verseKey(selectedVerse);
-    const next = { ...notes, [key]: value };
+    const next = { ...notes, [activeNoteKey]: value };
     setNotes(next);
     localStorage.setItem("selah-notes-v2", JSON.stringify(next));
   };
@@ -580,7 +580,20 @@ export default function Home() {
       || entries[0];
   }, [commentaryData, selectedVerse]);
   const chapterNotes = verses.filter((verse) => Boolean(notes[verseKey(verse.id)]));
-  const noteValue = notes[verseKey(selectedVerse)] || "";
+  const selectedSectionIds = [...selectedForHighlight].sort((a, b) => a - b);
+  const sectionNoteKey = `${passageKey}-section-${selectedSectionIds.join("_")}`;
+  const activeNoteKey = selectedSectionIds.length > 1 ? sectionNoteKey : verseKey(selectedSectionIds[0] || selectedVerse);
+  const noteReference = selectedSectionIds.length > 1
+    ? `${selectedBook.name} ${chapter}:${selectedSectionIds.join(", ")}`
+    : `${selectedBook.name} ${chapter}:${selectedSectionIds[0] || selectedVerse}`;
+  const sectionNotes = Object.entries(notes)
+    .filter(([key, value]) => key.startsWith(`${passageKey}-section-`) && Boolean(value))
+    .map(([key, value]) => ({
+      key,
+      reference: `${selectedBook.name} ${chapter}:${key.split("-section-")[1].split("_").join(", ")}`,
+      value,
+    }));
+  const noteValue = notes[activeNoteKey] || "";
   const isCurrentPlaceBookmarked = bookmark?.book === selectedBook.name && bookmark.chapter === chapter;
 
   const toggleCommentaryReading = () => {
@@ -694,7 +707,7 @@ export default function Home() {
               <div className="book-title-line">
                 <h1>{selectedBook.name}</h1>
                 <button className={isCurrentPlaceBookmarked ? "bookmarked" : ""} onClick={saveReadingPlace} aria-label={`Bookmark ${selectedBook.name} chapter ${chapter}`} title={isCurrentPlaceBookmarked ? "Current reading place saved" : "Save this reading place"}>
-                  {isCurrentPlaceBookmarked ? "★" : "☆"}
+                  <span className="bookmark-glyph" aria-hidden="true" />
                 </button>
               </div>
               <p className="subtitle">Chapter {chapter}</p>
@@ -715,17 +728,17 @@ export default function Home() {
                     <p
                       role="button"
                       tabIndex={0}
-                      aria-label={`${isActive && isReading ? (isPaused ? "Resume" : "Pause") : "Read"} ${verse.reference}`}
-                      onClick={() => handleVersePlayback(verse.id)}
-                      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") handleVersePlayback(verse.id); }}
+                      aria-label={`${isBatchSelected ? "Remove" : "Add"} ${verse.reference} ${isBatchSelected ? "from" : "to"} section selection`}
+                      onClick={() => toggleVerseSelection(verse.id)}
+                      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") toggleVerseSelection(verse.id); }}
                     >
                       {verse.text.split(/(\s+)/).map((token, index) => (
                         /^\s+$/.test(token) ? token : (
                           <button
                             key={`${token}-${index}`}
                             className={`verse-word ${selectedWord && token.replace(/[^A-Za-zÀ-ž'-]/g, "").toLowerCase() === selectedWord.toLowerCase() ? "word-selected" : ""}`}
-                            onClick={(event) => { event.stopPropagation(); selectWord(token, verse.id); }}
-                            aria-label={`Look up ${token.replace(/[^A-Za-zÀ-ž'-]/g, "")}`}
+                            onClick={(event) => { event.stopPropagation(); toggleVerseSelection(verse.id); selectWord(token, verse.id); }}
+                            aria-label={`Select ${verse.reference} and look up ${token.replace(/[^A-Za-zÀ-ž'-]/g, "")}`}
                           >{token}</button>
                         )
                       ))}
@@ -733,7 +746,7 @@ export default function Home() {
                     </p>
                     <div className="verse-actions">
                       <button onClick={() => toggleHighlight(verse.id)} aria-label={`Highlight ${verse.reference}`} className={highlightColor ? "active" : ""}>✦</button>
-                      <button onClick={() => { setSelectedVerse(verse.id); setOpenVerseMenu(openVerseMenu === verse.id ? null : verse.id); }} aria-label={`Open actions for ${verse.reference}`} aria-expanded={openVerseMenu === verse.id}>•••</button>
+                      <button className="edit-verse-button" onClick={() => { setSelectedVerse(verse.id); setOpenVerseMenu(openVerseMenu === verse.id ? null : verse.id); }} aria-label={`Open highlight and note tools for ${verse.reference}`} aria-expanded={openVerseMenu === verse.id}>✎</button>
                       <button onClick={() => handleVersePlayback(verse.id)} aria-label={`${isActive && isReading ? (isPaused ? "Resume" : "Pause") : "Read from"} ${verse.reference}`}>{isActive && isReading && !isPaused ? "Ⅱ" : "▶"}</button>
                       {openVerseMenu === verse.id && (
                         <div className="verse-action-menu">
@@ -758,6 +771,7 @@ export default function Home() {
               <strong>{selectedForHighlight.length} {selectedForHighlight.length === 1 ? "verse" : "verses"} selected</strong>
               <span>Highlight:</span>
               {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => <button key={color} className={`color-swatch ${color}`} onClick={() => applyHighlight(color)} aria-label={`Highlight ${color}`} />)}
+              <button className="section-note-action" onClick={() => { setSelectedVerse(selectedSectionIds[0]); setStudyTab("notes"); setStudyCollapsed(false); setMobileStudyOpen(true); }}>✎ Add section note</button>
               <button className="clear-highlight" onClick={() => applyHighlight()} aria-label="Remove highlighting">Clear</button>
               <button className="cancel-selection" onClick={() => setSelectedForHighlight([])} aria-label="Cancel selection">×</button>
             </div>
@@ -873,13 +887,14 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="study-content notes-tab-content">
-                  <div className="study-reference"><span>Notes · {selected?.reference || `${selectedBook.name} ${chapter}`}</span><small>{chapterNotes.length} in this chapter</small></div>
+                  <div className="study-reference"><span>Notes · {noteReference}</span><small>{chapterNotes.length + sectionNotes.length} in this chapter</small></div>
                   <div className="notes-card open">
-                    <div className="notes-heading"><span><i>⌑</i> Note for selected verse</span></div>
-                    <textarea value={noteValue} onChange={(event) => updateNote(event.target.value)} placeholder="What are you noticing?" aria-label={`Note for ${selected?.reference || "selected verse"}`} />
+                    <div className="notes-heading"><span><i>⌑</i> Note for {selectedSectionIds.length > 1 ? "selected section" : "selected verse"}</span></div>
+                    <textarea value={noteValue} onChange={(event) => updateNote(event.target.value)} placeholder="What are you noticing?" aria-label={`Note for ${noteReference}`} />
                     <div className="saved-state"><span>✓ Saved on this device</span><small>{noteValue.length}/500</small></div>
                   </div>
                   {chapterNotes.length > 0 && <div className="chapter-notes-list"><h3>Chapter notes</h3>{chapterNotes.map((verse) => <button key={verse.id} onClick={() => setSelectedVerse(verse.id)}><strong>{verse.reference}</strong><span>{notes[verseKey(verse.id)]}</span></button>)}</div>}
+                  {sectionNotes.length > 0 && <div className="chapter-notes-list"><h3>Section notes</h3>{sectionNotes.map((note) => <button key={note.key}><strong>{note.reference}</strong><span>{note.value}</span></button>)}</div>}
                 </div>
               )}
             </>
@@ -889,8 +904,8 @@ export default function Home() {
 
       <button className="mobile-study-button" onClick={() => setMobileStudyOpen(true)}>Study tools</button>
 
-      <section className={`audio-dock ${audioSettingsOpen ? "settings-open" : ""}`} aria-label="Read aloud controls">
-        {audioSettingsOpen && (
+      <section className={`audio-dock ${audioSettingsOpen ? "settings-open" : ""} ${audioDockCollapsed ? "collapsed" : ""}`} aria-label="Read aloud controls">
+        {audioSettingsOpen && !audioDockCollapsed && (
           <div className="audio-settings-popover">
             <label><span>Voice</span><select value={voiceName || "local"} onChange={(event) => { const value = event.target.value; const next = value === "local" ? bestVoice(sortedVoices)?.name || "" : value; setVoiceName(next); localStorage.setItem("selah-voice", next); }}>
               <option value="local">Installed browser voice{voiceName ? ` · ${voiceName}` : ""}</option>
@@ -901,14 +916,14 @@ export default function Home() {
             <label><span>Speed</span><input type="range" min="0.7" max="1.25" step="0.05" value={rate} onChange={(event) => setRate(Number(event.target.value))} /><strong>{rate.toFixed(2)}×</strong></label>
           </div>
         )}
-        <div className="now-reading"><span className="audio-pulse">◖</span><div><small>{isPaused ? "PAUSED" : isReading ? "READING" : "READ ALOUD"}</small><strong>{activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}</strong></div></div>
+        {!audioDockCollapsed && <div className="now-reading"><span className="audio-pulse">◖</span><div><small>{isPaused ? "PAUSED" : isReading ? "READING" : "READ ALOUD"}</small><strong>{activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}</strong></div></div>}
         <div className="transport">
           <button className="skip-button" aria-label="Previous verse" onClick={() => jumpToVerse(Math.max(verses[0]?.id || 1, (activeVerse || selectedVerse) - 1))}>‹<span>|</span></button>
           {!isReading ? <button className="play-button" onClick={() => startReading()} aria-label="Start read aloud">▶</button> : <button className="play-button" onClick={togglePause} aria-label={isPaused ? "Resume read aloud" : "Pause read aloud"}>{isPaused ? "▶" : "Ⅱ"}</button>}
           <button className="skip-button" aria-label="Next verse" onClick={() => jumpToVerse(Math.min(verses.at(-1)?.id || 1, (activeVerse || selectedVerse) + 1))}><span>|</span>›</button>
-          {isReading && <button className="stop-button" onClick={stopReading} aria-label="Stop read aloud">■</button>}
         </div>
-        <button className="audio-settings-button" onClick={() => setAudioSettingsOpen(!audioSettingsOpen)} aria-label="Audio voice and speed settings">•••</button>
+        {!audioDockCollapsed && <button className="audio-settings-button" onClick={() => setAudioSettingsOpen(!audioSettingsOpen)} aria-label="Audio voice and speed settings">•••</button>}
+        <button className="audio-collapse-button" onClick={() => { setAudioDockCollapsed(!audioDockCollapsed); setAudioSettingsOpen(false); }} aria-label={audioDockCollapsed ? "Expand read aloud controls" : "Collapse read aloud controls"}>{audioDockCollapsed ? "+" : "−"}</button>
       </section>
     </main>
   );

@@ -34,7 +34,9 @@ test("server-renders the Selah Bible reader", async () => {
   assert.match(html, /Commentary/);
   assert.match(html, /Original language/);
   assert.match(html, /Notes/);
-  assert.match(html, /Read Genesis 1:1/);
+  assert.match(html, /Add Genesis 1:1 to section selection/);
+  assert.match(html, /Open highlight and note tools for Genesis 1:1/);
+  assert.match(html, /Collapse read aloud controls/);
   assert.match(html, /Bookmark Genesis chapter 1/);
   assert.match(html, />KJV</);
   assert.doesNotMatch(html, /NKJV|license required|NKJV-ready foundation/i);
@@ -68,4 +70,6 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /setPicker\("chapters"\)/);
   assert.match(page, /toggleCommentaryReading/);
   assert.match(page, /Read commentary aloud/);
+  assert.match(page, /Add section note/);
+  assert.match(page, /audioDockCollapsed/);
 });
