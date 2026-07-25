@@ -7,7 +7,7 @@ type Book = { name: string; chapters: number; testament: "Old Testament" | "New 
 type Picker = "books" | "chapters" | null;
 type StudyTab = "commentary" | "lexicon" | "notes";
 type HighlightColor = "gold" | "sage" | "blue" | "rose";
-type LexiconEntry = { word: string; transliteration: string; pronunciation: string; number: string; meaning: string; lang: "he-IL" | "el-GR" };
+type LexiconEntry = { word: string; transliteration: string; pronunciation: string; spoken: string; number: string; meaning: string; lang: "he-IL" | "el-GR" };
 
 const books: Book[] = [
   ["Genesis",50,"Old Testament"],["Exodus",40,"Old Testament"],["Leviticus",27,"Old Testament"],["Numbers",36,"Old Testament"],["Deuteronomy",34,"Old Testament"],
@@ -67,15 +67,15 @@ const commentary = {
 };
 
 const hebrewLexicon: LexiconEntry[] = [
-  { word: "בְּרֵאשִׁית", transliteration: "bərēʾšît", pronunciation: "beh-ray-SHEET", number: "H7225", meaning: "beginning, first, chief", lang: "he-IL" },
-  { word: "אֱלֹהִים", transliteration: "ʾĕlōhîm", pronunciation: "el-oh-HEEM", number: "H430", meaning: "God, divine one", lang: "he-IL" },
-  { word: "בָּרָא", transliteration: "bārāʾ", pronunciation: "bah-RAH", number: "H1254", meaning: "to create, shape", lang: "he-IL" },
+  { word: "בְּרֵאשִׁית", transliteration: "bərēʾšît", pronunciation: "beh-ray-SHEET", spoken: "beh ray sheet", number: "H7225", meaning: "beginning, first, chief", lang: "he-IL" },
+  { word: "אֱלֹהִים", transliteration: "ʾĕlōhîm", pronunciation: "el-oh-HEEM", spoken: "el oh heem", number: "H430", meaning: "God, divine one", lang: "he-IL" },
+  { word: "בָּרָא", transliteration: "bārāʾ", pronunciation: "bah-RAH", spoken: "bah rah", number: "H1254", meaning: "to create, shape", lang: "he-IL" },
 ];
 
 const greekLexicon: LexiconEntry[] = [
-  { word: "ἀρχή", transliteration: "archē", pronunciation: "ar-KHAY", number: "G746", meaning: "beginning, origin, first cause", lang: "el-GR" },
-  { word: "θεός", transliteration: "theos", pronunciation: "theh-OSS", number: "G2316", meaning: "God, deity", lang: "el-GR" },
-  { word: "λόγος", transliteration: "logos", pronunciation: "LOH-goss", number: "G3056", meaning: "word, message, reason", lang: "el-GR" },
+  { word: "ἀρχή", transliteration: "archē", pronunciation: "ar-KHAY", spoken: "ar khay", number: "G746", meaning: "beginning, origin, first cause", lang: "el-GR" },
+  { word: "θεός", transliteration: "theos", pronunciation: "theh-OSS", spoken: "theh oss", number: "G2316", meaning: "God, deity", lang: "el-GR" },
+  { word: "λόγος", transliteration: "logos", pronunciation: "LOH-goss", spoken: "loh goss", number: "G3056", meaning: "word, message, reason", lang: "el-GR" },
 ];
 
 function bestVoice(voices: SpeechSynthesisVoice[]) {
@@ -115,6 +115,7 @@ export default function Home() {
   const [highlights, setHighlights] = useState<Record<string, HighlightColor>>({});
   const [selectedForHighlight, setSelectedForHighlight] = useState<number[]>([]);
   const [selectedWord, setSelectedWord] = useState("");
+  const [openVerseMenu, setOpenVerseMenu] = useState<number | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [studyTab, setStudyTab] = useState<StudyTab>("commentary");
   const [studyCollapsed, setStudyCollapsed] = useState(false);
@@ -301,6 +302,16 @@ export default function Home() {
     localStorage.setItem("selah-highlights-v2", JSON.stringify(next));
   };
 
+  const setVerseHighlight = (id: number, color?: HighlightColor) => {
+    const key = verseKey(id);
+    const next = { ...highlights };
+    if (color) next[key] = color;
+    else delete next[key];
+    setHighlights(next);
+    localStorage.setItem("selah-highlights-v2", JSON.stringify(next));
+    setOpenVerseMenu(null);
+  };
+
   const selectWord = (word: string, verseId: number) => {
     const cleaned = word.replace(/[^A-Za-zÀ-ž'-]/g, "");
     if (!cleaned) return;
@@ -314,27 +325,35 @@ export default function Home() {
   const pronounceOriginal = (entry: LexiconEntry) => {
     if (!("speechSynthesis" in window)) return;
     stopReading();
-    const utterance = new SpeechSynthesisUtterance(entry.word);
-    utterance.lang = entry.lang;
-    utterance.rate = 0.72;
     const languagePrefix = entry.lang.split("-")[0].toLowerCase();
     const languageVoice = voices.find((voice) => voice.lang.toLowerCase().startsWith(languagePrefix));
-    if (languageVoice) utterance.voice = languageVoice;
-    window.speechSynthesis.speak(utterance);
+    window.setTimeout(() => {
+      const utterance = new SpeechSynthesisUtterance(languageVoice ? entry.word : entry.spoken);
+      utterance.lang = languageVoice ? entry.lang : "en-US";
+      utterance.rate = languageVoice ? 0.72 : 0.78;
+      const fallbackVoice = voices.find((voice) => voice.name === voiceName) || bestVoice(voices);
+      if (languageVoice) utterance.voice = languageVoice;
+      else if (fallbackVoice) utterance.voice = fallbackVoice;
+      window.speechSynthesis.speak(utterance);
+    }, 90);
   };
 
   const readOriginalWords = (entries: LexiconEntry[]) => {
     if (!("speechSynthesis" in window)) return;
     stopReading();
-    entries.forEach((entry) => {
-      const utterance = new SpeechSynthesisUtterance(entry.word);
-      utterance.lang = entry.lang;
-      utterance.rate = 0.72;
-      const prefix = entry.lang.split("-")[0].toLowerCase();
-      const languageVoice = voices.find((voice) => voice.lang.toLowerCase().startsWith(prefix));
-      if (languageVoice) utterance.voice = languageVoice;
-      window.speechSynthesis.speak(utterance);
-    });
+    window.setTimeout(() => {
+      entries.forEach((entry) => {
+        const prefix = entry.lang.split("-")[0].toLowerCase();
+        const languageVoice = voices.find((voice) => voice.lang.toLowerCase().startsWith(prefix));
+        const utterance = new SpeechSynthesisUtterance(languageVoice ? entry.word : entry.spoken);
+        utterance.lang = languageVoice ? entry.lang : "en-US";
+        utterance.rate = languageVoice ? 0.72 : 0.78;
+        const fallbackVoice = voices.find((voice) => voice.name === voiceName) || bestVoice(voices);
+        if (languageVoice) utterance.voice = languageVoice;
+        else if (fallbackVoice) utterance.voice = fallbackVoice;
+        window.speechSynthesis.speak(utterance);
+      });
+    }, 90);
   };
 
   const updateNote = (value: string) => {
@@ -365,6 +384,7 @@ export default function Home() {
   const oldTestament = useMemo(() => books.filter((book) => book.testament === "Old Testament"), []);
   const newTestament = useMemo(() => books.filter((book) => book.testament === "New Testament"), []);
   const sortedVoices = useMemo(() => voices.filter((voice) => voice.lang.toLowerCase().startsWith("en")).sort((a, b) => voiceRank(a) - voiceRank(b) || a.name.localeCompare(b.name)), [voices]);
+  const hasAvaVoice = sortedVoices.some((voice) => voice.name.toLowerCase().includes("microsoft ava"));
   const activeLexicon = selectedBook.testament === "Old Testament" ? hebrewLexicon : greekLexicon;
   const selectedLookupEntry = useMemo(() => {
     const word = selectedWord.toLowerCase();
@@ -476,8 +496,19 @@ export default function Home() {
                     </p>
                     <div className="verse-actions">
                       <button onClick={() => toggleHighlight(verse.id)} aria-label={`Highlight ${verse.reference}`} className={highlightColor ? "active" : ""}>✦</button>
-                      <button onClick={() => { setSelectedVerse(verse.id); setStudyTab("notes"); setStudyCollapsed(false); setMobileStudyOpen(true); }} aria-label={`Add note to ${verse.reference}`}>⌑</button>
+                      <button onClick={() => { setSelectedVerse(verse.id); setOpenVerseMenu(openVerseMenu === verse.id ? null : verse.id); }} aria-label={`Open actions for ${verse.reference}`} aria-expanded={openVerseMenu === verse.id}>•••</button>
                       <button onClick={() => handleVersePlayback(verse.id)} aria-label={`${isActive && isReading ? (isPaused ? "Resume" : "Pause") : "Read from"} ${verse.reference}`}>{isActive && isReading && !isPaused ? "Ⅱ" : "▶"}</button>
+                      {openVerseMenu === verse.id && (
+                        <div className="verse-action-menu">
+                          <div className="verse-menu-heading"><strong>{verse.reference}</strong><button onClick={() => setOpenVerseMenu(null)} aria-label="Close verse menu">×</button></div>
+                          <span>Highlight color</span>
+                          <div className="verse-color-row">
+                            {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => <button key={color} className={`color-swatch ${color} ${highlightColor === color ? "selected" : ""}`} onClick={() => setVerseHighlight(verse.id, color)} aria-label={`Highlight ${color}`} />)}
+                            {highlightColor && <button className="remove-color" onClick={() => setVerseHighlight(verse.id)} aria-label="Remove highlight">Clear</button>}
+                          </div>
+                          <button className="open-note-action" onClick={() => { setSelectedVerse(verse.id); setStudyTab("notes"); setStudyCollapsed(false); setMobileStudyOpen(true); setOpenVerseMenu(null); }}>⌑ Open note</button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -578,7 +609,8 @@ export default function Home() {
       <section className={`audio-dock ${audioSettingsOpen ? "settings-open" : ""}`} aria-label="Read aloud controls">
         {audioSettingsOpen && (
           <div className="audio-settings-popover">
-            <label><span>Voice</span><select value={voiceName} onChange={(event) => { setVoiceName(event.target.value); localStorage.setItem("selah-voice", event.target.value); }}>{voices.length === 0 && <option>System voice</option>}{sortedVoices.map((voice) => <option key={voice.name} value={voice.name}>{voice.name}{voice.name.toLowerCase().includes("microsoft david") ? " · default" : ""}</option>)}</select></label>
+            <label><span>Voice</span><select value={voiceName} onChange={(event) => { setVoiceName(event.target.value); localStorage.setItem("selah-voice", event.target.value); }}>{voices.length === 0 && <option>System voice</option>}{sortedVoices.map((voice) => <option key={voice.name} value={voice.name}>{voice.name}{voice.name.toLowerCase().includes("microsoft david") ? " · default" : ""}</option>)}{!hasAvaVoice && <option disabled>Microsoft Ava · Azure connection required</option>}</select></label>
+            {!hasAvaVoice && <p className="voice-availability">Ava is a Microsoft neural cloud voice, not an installed browser voice on this device. David remains the local default.</p>}
             <label><span>Speed</span><input type="range" min="0.7" max="1.25" step="0.05" value={rate} onChange={(event) => setRate(Number(event.target.value))} /><strong>{rate.toFixed(2)}×</strong></label>
           </div>
         )}
