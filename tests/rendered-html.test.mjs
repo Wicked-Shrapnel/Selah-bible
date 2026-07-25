@@ -63,6 +63,24 @@ test("ships the attributed whole-Bible commentary dataset", async () => {
   assert.match(sourceNotes, /maps, photographs, charts, or\s+illustrations/i);
 });
 
+test("bundles local Bible files and red-letter metadata", async () => {
+  const [booksText, genesisText, redLetterText] = await Promise.all([
+    readFile(new URL("../public/bible/kjv/Books.json", import.meta.url), "utf8"),
+    readFile(new URL("../public/bible/kjv/Genesis.json", import.meta.url), "utf8"),
+    readFile(new URL("../public/bible/kjv/red-letter.json", import.meta.url), "utf8"),
+  ]);
+
+  const books = JSON.parse(booksText);
+  const genesis = JSON.parse(genesisText);
+  const redLetter = JSON.parse(redLetterText);
+
+  assert.equal(books.length, 66);
+  assert.equal(genesis.book, "Genesis");
+  assert.equal(genesis.chapters[0].verses[0].text, "In the beginning God created the heaven and the earth.");
+  assert.ok(redLetter["John 3:16"]);
+  assert.ok(redLetter["Matthew 5:3"]);
+});
+
 test("includes searchable passage selection, saved place, and commentary audio", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(page, /placeholder="Search for a book/);
@@ -99,6 +117,9 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /historicalCommentaryUrl/);
   assert.match(page, /future side-by-side media view/);
   assert.match(page, /wordStudyMode/);
+  assert.match(page, /loadBibleChapter/);
+  assert.match(page, /bible\/kjv\/red-letter\.json/);
   assert.doesNotMatch(page, /recentWords|RECENT WORDS/);
   assert.match(page, /id === sorted\[0\] - 1/);
+  assert.doesNotMatch(page, /bible-api\.com/);
 });

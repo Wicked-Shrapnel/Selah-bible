@@ -153,10 +153,15 @@ button, select { cursor: pointer; }
 .saved-note-indicator { position: absolute; top: 34px; left: 19px; color: #9b7625; font: 700 10px/1 Georgia, serif; }
 .verse-row p { margin: 0; color: #31352f; font: 18px/1.67 Georgia, "Times New Roman", serif; cursor: pointer; }
 .verse-row.reading p { color: #173d30; }
+.verse-row.red-letter-verse p { color: #9f2f2f; }
 .verse-word { display: inline; margin: 0; padding: 1px 0; border: 0; border-radius: 3px; background: transparent; color: inherit; font: inherit; text-align: inherit; cursor: text; }
 .verse-word:hover { color: var(--sage); background: rgba(52,92,76,.09); }
 .verse-word.pronunciation-ready { cursor: pointer; }
 .verse-word.word-selected { color: #173d30; background: #d9e9df; box-shadow: 0 0 0 2px #d9e9df; }
+.verse-row.red-letter-verse .verse-word { color: #9f2f2f; }
+.verse-row.red-letter-verse .verse-word:hover { color: #7f2222; background: rgba(159,47,47,.09); }
+.verse-row.red-letter-verse .verse-word.word-selected { color: #7f2222; background: rgba(159,47,47,.12); box-shadow: 0 0 0 2px rgba(159,47,47,.12); }
+.verse-row.red-letter-verse.reading { border-left-color: #b54b4b; }
 .verse-actions { position: relative; display: flex; gap: 2px; opacity: 0; transition: opacity .15s; padding-top: 2px; }
 .verse-row:hover .verse-actions, .verse-row.selected .verse-actions { opacity: 1; }
 .verse-actions button { width: 28px; height: 28px; border: 0; border-radius: 6px; color: #8c8b82; background: rgba(255,255,255,.76); }

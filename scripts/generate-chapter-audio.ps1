@@ -36,14 +36,20 @@ function Write-WaveFile {
 }
 
 $baseDir = Join-Path $PSScriptRoot "..\public\audio"
+$bibleDir = Join-Path $PSScriptRoot "..\public\bible\kjv"
 $bookSlug = Get-BookSlug -Name $Book
 $chapterDir = Join-Path $baseDir (Join-Path $bookSlug $Chapter)
 $chapterKey = "$bookSlug-$Chapter"
 
-$reference = [uri]::EscapeDataString("$Book $Chapter")
-$response = Invoke-RestMethod "https://bible-api.com/$reference?translation=kjv&single_chapter_book_matching=indifferent"
+$biblePath = Join-Path $bibleDir ($Book -replace '\s+', '') + ".json"
+if (-not (Test-Path $biblePath)) {
+  throw "Bible file not found at $biblePath."
+}
 
-if (-not $response.verses) {
+$response = Get-Content -Raw -Path $biblePath | ConvertFrom-Json
+$chapterData = $response.chapters | Where-Object { [int]$_.chapter -eq $Chapter } | Select-Object -First 1
+
+if (-not $chapterData.verses) {
   throw "No verses returned for $Book $Chapter."
 }
 
@@ -55,7 +61,7 @@ if ($installed) {
 
 Write-WaveFile -Synth $synth -Text "$Book chapter $Chapter." -Path (Join-Path $chapterDir "intro.wav")
 
-foreach ($verse in $response.verses) {
+foreach ($verse in $chapterData.verses) {
   $path = Join-Path $chapterDir ("{0}.wav" -f $verse.verse)
   Write-WaveFile -Synth $synth -Text ($verse.text.Trim()) -Path $path
 }

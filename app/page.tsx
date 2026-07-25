@@ -26,6 +26,9 @@ type CommentaryChapter = { source: CommentarySource; book: string; chapter: numb
 type SavedPlace = { book: string; chapter: number };
 type SavedReference = { key: string; book: Book; chapter: number; verseIds: number[]; reference: string };
 type SavedTextCache = Record<string, Record<number, string>>;
+type BibleSourceVerse = { verse: string; text: string };
+type BibleSourceChapter = { chapter: string; verses: BibleSourceVerse[] };
+type BibleSourceBook = { book: string; chapters: BibleSourceChapter[] };
 
 const books: Book[] = [
   ["Genesis",50,"Old Testament"],["Exodus",40,"Old Testament"],["Leviticus",27,"Old Testament"],["Numbers",36,"Old Testament"],["Deuteronomy",34,"Old Testament"],
@@ -119,6 +122,10 @@ function chapterAudioBase(book: string, chapterNumber: number) {
   return `/audio/${bookSlug(book)}/${chapterNumber}`;
 }
 
+function bibleFileName(name: string) {
+  return `${name.replace(/\s+/g, "")}.json`;
+}
+
 function savedTextCacheKey(book: string, chapterNumber: number) {
   return `${bookSlug(book)}-${chapterNumber}`;
 }
@@ -167,6 +174,7 @@ export default function Home() {
   const [savedAudioChapters, setSavedAudioChapters] = useState<Set<string>>(new Set());
   const [highlights, setHighlights] = useState<Record<string, HighlightColor>>({});
   const [savedTextCache, setSavedTextCache] = useState<SavedTextCache>({});
+  const [redLetterMap, setRedLetterMap] = useState<Record<string, string>>({});
   const [preferredHighlightColor, setPreferredHighlightColor] = useState<HighlightColor>("gold");
   const [selectedForHighlight, setSelectedForHighlight] = useState<number[]>([]);
   const [selectedWord, setSelectedWord] = useState("");
@@ -196,12 +204,35 @@ export default function Home() {
   const passagePickerRef = useRef<HTMLDivElement | null>(null);
   const savedPanelRef = useRef<HTMLDivElement | null>(null);
   const pendingSavedVerse = useRef<number | null>(null);
+  const bibleBookCache = useRef<Record<string, BibleSourceBook>>({});
 
   const passageKey = `${selectedBook.name}-${chapter}`;
   const verseKey = (id: number) => `${passageKey}-${id}`;
   const chapterAudioKey = `${bookSlug(selectedBook.name)}-${chapter}`;
   const chapterAudioPrefix = chapterAudioBase(selectedBook.name, chapter);
   const selected = verses.find((verse) => verse.id === selectedVerse) || verses[0];
+
+  const loadBibleChapter = useCallback(async (bookName: string, chapterNumber: number) => {
+    const fileName = bibleFileName(bookName);
+    const cached = bibleBookCache.current[fileName];
+    let sourceBook = cached;
+
+    if (!sourceBook) {
+      const response = await fetch(`/bible/kjv/${fileName}`);
+      if (!response.ok) throw new Error("Chapter file unavailable");
+      sourceBook = await response.json() as BibleSourceBook;
+      bibleBookCache.current[fileName] = sourceBook;
+    }
+
+    const sourceChapter = sourceBook.chapters.find((item) => Number(item.chapter) === chapterNumber);
+    if (!sourceChapter) throw new Error("Chapter missing from local Bible data");
+
+    return sourceChapter.verses.map((verse) => ({
+      id: Number(verse.verse),
+      reference: `${bookName} ${chapterNumber}:${verse.verse}`,
+      text: verse.text.trim(),
+    })) as Verse[];
+  }, []);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -268,6 +299,17 @@ export default function Home() {
 
   useEffect(() => {
     let ignore = false;
+    fetch("/bible/kjv/red-letter.json")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: Record<string, string> | null) => {
+        if (!ignore && data) setRedLetterMap(data);
+      })
+      .catch(() => {});
+    return () => { ignore = true; };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
     setCommentaryStatus("loading");
     setCommentaryData(null);
     fetch(`/commentary/mhcc/${bookSlug(selectedBook.name)}/${chapter}.json`)
@@ -290,30 +332,13 @@ export default function Home() {
   useEffect(() => {
     let ignore = false;
     async function loadChapter() {
-      if (selectedBook.name === "Genesis" && chapter === 1) {
-        setVerses(genesisOne);
-        setLoadNotice("");
-        const targetVerse = pendingSavedVerse.current || 1;
-        pendingSavedVerse.current = null;
-        setSelectedVerse(targetVerse);
-        window.setTimeout(() => document.getElementById(`verse-${targetVerse}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
-        return;
-      }
       setIsLoading(true);
       setLoadNotice("");
       try {
-        const reference = encodeURIComponent(`${selectedBook.name} ${chapter}`);
-        const response = await fetch(`https://bible-api.com/${reference}?translation=kjv&single_chapter_book_matching=indifferent`);
-        if (!response.ok) throw new Error("Passage unavailable");
-        const data = await response.json() as { verses?: Array<{ verse: number; text: string }> };
-        if (!data.verses?.length) throw new Error("No verses returned");
+        const chapterVerses = await loadBibleChapter(selectedBook.name, chapter);
         if (!ignore) {
-          setVerses(data.verses.map((verse) => ({
-            id: verse.verse,
-            reference: `${selectedBook.name} ${chapter}:${verse.verse}`,
-            text: verse.text.trim(),
-          })));
-          const targetVerse = pendingSavedVerse.current || data.verses[0].verse;
+          setVerses(chapterVerses);
+          const targetVerse = pendingSavedVerse.current || chapterVerses[0]?.id || 1;
           pendingSavedVerse.current = null;
           setSelectedVerse(targetVerse);
           window.setTimeout(() => document.getElementById(`verse-${targetVerse}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
@@ -342,7 +367,7 @@ export default function Home() {
       loadChapter();
     });
     return () => { ignore = true; };
-  }, [selectedBook, chapter]);
+  }, [selectedBook, chapter, loadBibleChapter]);
 
   const stopReading = useCallback(() => {
     cancelled.current = true;
@@ -776,14 +801,8 @@ export default function Home() {
 
     async function loadSavedChapterText(saved: SavedReference) {
       const cacheKey = savedTextCacheKey(saved.book.name, saved.chapter);
-      if (saved.book.name === "Genesis" && saved.chapter === 1) {
-        return [cacheKey, Object.fromEntries(genesisOne.map((verse) => [verse.id, verse.text]))] as const;
-      }
-      const reference = encodeURIComponent(`${saved.book.name} ${saved.chapter}`);
-      const response = await fetch(`https://bible-api.com/${reference}?translation=kjv&single_chapter_book_matching=indifferent`);
-      if (!response.ok) throw new Error("Chapter text unavailable");
-      const data = await response.json() as { verses?: Array<{ verse: number; text: string }> };
-      return [cacheKey, Object.fromEntries((data.verses || []).map((verse) => [verse.verse, verse.text.trim()]))] as const;
+      const chapterVerses = await loadBibleChapter(saved.book.name, saved.chapter);
+      return [cacheKey, Object.fromEntries(chapterVerses.map((verse) => [verse.id, verse.text]))] as const;
     }
 
     Promise.allSettled(uniqueChapters.map(loadSavedChapterText)).then((results) => {
@@ -795,7 +814,7 @@ export default function Home() {
       setSavedTextCache((current) => ({ ...current, ...Object.fromEntries(loaded) }));
     });
     return () => { ignore = true; };
-  }, [savedReferencesToLoad, savedTextCache]);
+  }, [savedReferencesToLoad, savedTextCache, loadBibleChapter]);
 
   const savedVerseText = (saved: SavedReference) => {
     const chapterText = savedTextCache[savedTextCacheKey(saved.book.name, saved.chapter)] || {};
@@ -1041,8 +1060,9 @@ export default function Home() {
                 const isBatchSelected = selectedForHighlight.includes(verse.id);
                 const isNoteTarget = inlineNoteVerse === verse.id || inlineSectionNoteIds.includes(verse.id);
                 const hasSavedNote = savedNoteVerseIds.has(verse.id);
+                const isRedLetter = Boolean(redLetterMap[verse.reference]);
                 return (
-                  <div key={verse.id} id={`verse-${verse.id}`} className={`verse-row ${isActive ? "reading" : ""} ${isSelected ? "selected" : ""} ${highlightColor ? `highlighted highlight-${highlightColor}` : ""} ${isBatchSelected ? "batch-selected" : ""} ${isNoteTarget ? "note-target" : ""}`}>
+                  <div key={verse.id} id={`verse-${verse.id}`} className={`verse-row ${isActive ? "reading" : ""} ${isSelected ? "selected" : ""} ${highlightColor ? `highlighted highlight-${highlightColor}` : ""} ${isBatchSelected ? "batch-selected" : ""} ${isNoteTarget ? "note-target" : ""} ${isRedLetter ? "red-letter-verse" : ""}`}>
                     <button className="verse-number" onClick={() => toggleVerseSelection(verse.id)} aria-label={`${isBatchSelected ? "Remove" : "Add"} ${verse.reference} ${isBatchSelected ? "from" : "to"} highlight selection`}>{isBatchSelected ? "✓" : verse.id}</button>
                     {hasSavedNote && <span className="saved-note-indicator" aria-label={`A note is saved for ${verse.reference}`} title={`Note saved for ${verse.reference}`}>✎</span>}
                     <p
@@ -1057,7 +1077,7 @@ export default function Home() {
                         return /^\s+$/.test(token) ? token : (
                           <button
                             key={`${token}-${index}`}
-                            className={`verse-word ${wordStudyMode ? "pronunciation-ready" : ""} ${selectedWordKey === wordKey ? "word-selected" : ""}`}
+                            className={`verse-word ${wordStudyMode ? "pronunciation-ready" : ""} ${selectedWordKey === wordKey ? "word-selected" : ""} ${isRedLetter ? "red-letter-word" : ""}`}
                             onClick={(event) => {
                               event.stopPropagation();
                               if (wordStudyMode) selectWord(token, verse.id, wordKey);
