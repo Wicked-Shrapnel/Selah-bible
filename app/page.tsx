@@ -173,6 +173,7 @@ export default function Home() {
   const [commentaryStatus, setCommentaryStatus] = useState<"loading" | "ready" | "error">("loading");
   const [bookmark, setBookmark] = useState<SavedPlace | null>(null);
   const [savedPanelOpen, setSavedPanelOpen] = useState(false);
+  const [savedViewTab, setSavedViewTab] = useState<"highlights" | "notes">("highlights");
   const [isReadingCommentary, setIsReadingCommentary] = useState(false);
   const [isCommentaryPaused, setIsCommentaryPaused] = useState(false);
   const [commentaryWordIndex, setCommentaryWordIndex] = useState<number | null>(null);
@@ -843,37 +844,61 @@ export default function Home() {
           <button className="saved-library-button" onClick={() => setSavedPanelOpen((current) => !current)} aria-expanded={savedPanelOpen} aria-label="Open saved highlights, notes, and reading place">
             <span aria-hidden="true">⌑</span> Saved {savedCount > 0 && <small>{savedCount}</small>}
           </button>
-          {savedPanelOpen && (
-            <section className="saved-library" aria-label="Saved items">
-              <div className="saved-library-heading"><div><span>YOUR LIBRARY</span><strong>Saved for later</strong></div><button onClick={() => setSavedPanelOpen(false)} aria-label="Close saved items">×</button></div>
-              {bookmark && (
-                <div className="saved-group">
-                  <h3>Reading place</h3>
-                  <button onClick={() => { const book = books.find((item) => item.name === bookmark.book); if (!book) return; pendingSavedVerse.current = 1; setSelectedBook(book); setChapter(bookmark.chapter); setSavedPanelOpen(false); }}>
-                    <i className="saved-bookmark-icon" aria-hidden="true" /><span><strong>{bookmark.book} {bookmark.chapter}</strong><small>Bookmarked chapter</small></span>
-                  </button>
-                </div>
-              )}
-              <div className="saved-group">
-                <h3>Notes · newest first</h3>
-                {recentNotes.length ? recentNotes.map(({ saved, value }) => (
-                  <button key={saved.key} onClick={() => openSavedReference(saved)}>
-                    <i className="saved-pencil" aria-hidden="true">✎</i><span><strong>{saved.reference}</strong><small>{value}</small></span>
-                  </button>
-                )) : <p>No saved notes yet.</p>}
-              </div>
-              <div className="saved-group">
-                <h3>Highlights · newest first</h3>
-                {recentHighlights.length ? recentHighlights.map(({ saved, color }) => (
-                  <button key={saved.key} onClick={() => openSavedReference(saved)}>
-                    <i className={`saved-color ${color}`} aria-hidden="true" /><span><strong>{saved.reference}</strong><small>{color} highlight</small></span>
-                  </button>
-                )) : <p>No saved highlights yet.</p>}
-              </div>
-            </section>
-          )}
         </div>
       </header>
+
+      {savedPanelOpen && (
+        <section className="saved-library saved-library-window" aria-modal="true" role="dialog" aria-label="Saved highlights and notes">
+          <div className="saved-library-heading">
+            <div><span>YOUR LIBRARY</span><strong>Saved</strong></div>
+            <button onClick={() => setSavedPanelOpen(false)} aria-label="Close saved section">X</button>
+          </div>
+          <div className="saved-library-body">
+            <div className="saved-bookmark-card">
+              <i className="saved-bookmark-icon" aria-hidden="true" />
+              <div>
+                <span>BOOKMARK</span>
+                <strong>{bookmark ? `${bookmark.book} ${bookmark.chapter}` : "No chapter bookmarked"}</strong>
+                <small>{bookmark ? "Your saved reading place" : "Tap the bookmark beside a book name to save your place."}</small>
+              </div>
+              {bookmark && <button onClick={openBookmarkedChapter}>Jump to chapter</button>}
+            </div>
+            <div className="saved-section">
+              <div className="saved-section-top">
+                <div>
+                  <span>SAVED SECTION</span>
+                  <strong>{savedViewTab === "highlights" ? "Highlights" : "Notes"}</strong>
+                </div>
+                <div className="saved-tabs" role="tablist" aria-label="Saved library sections">
+                  <button className={savedViewTab === "highlights" ? "active" : ""} onClick={() => setSavedViewTab("highlights")} role="tab" aria-selected={savedViewTab === "highlights"} aria-label="Highlights · newest first">Highlights</button>
+                  <button className={savedViewTab === "notes" ? "active" : ""} onClick={() => setSavedViewTab("notes")} role="tab" aria-selected={savedViewTab === "notes"}>Notes</button>
+                </div>
+              </div>
+              {savedViewTab === "highlights" ? (
+                <div className="saved-list">
+                  {recentHighlights.length ? recentHighlights.map(({ saved, color }) => (
+                    <button key={saved.key} onClick={() => openSavedReference(saved)}>
+                      <i className={`saved-color ${color}`} aria-hidden="true" />
+                      <span><strong>{saved.reference}</strong><small>{color} highlight</small></span>
+                      <b>Jump</b>
+                    </button>
+                  )) : <p>No saved highlights yet.</p>}
+                </div>
+              ) : (
+                <div className="saved-list">
+                  {recentNotes.length ? recentNotes.map(({ saved, value }) => (
+                    <button key={saved.key} onClick={() => openSavedReference(saved)}>
+                      <i className="saved-pencil" aria-hidden="true">✎</i>
+                      <span><strong>{saved.reference}</strong><small>{value}</small></span>
+                      <b>Jump</b>
+                    </button>
+                  )) : <p>No saved notes yet.</p>}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {picker === "books" && (
         <>

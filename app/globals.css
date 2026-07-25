@@ -65,6 +65,31 @@ button, select { cursor: pointer; }
 .saved-color.blue { background: #8eb9d3; }
 .saved-color.rose { background: #d99a95; }
 .saved-bookmark-icon { position: relative; width: 11px; height: 15px; margin-left: 2px; background: #9b7625; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 73%, 0 100%); }
+.saved-library-window { display: flex; flex-direction: column; }
+.saved-library-window .saved-library-heading strong::before { content: "Saved"; }
+.saved-library-body { position: relative; z-index: 1; width: min(1040px, calc(100vw - 48px)); margin: 0 auto; padding: 36px 0 72px; }
+.saved-bookmark-card { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 15px; align-items: center; padding: 18px; border: 1px solid #d9d4c8; border-radius: 8px; background: var(--white); box-shadow: 0 8px 24px rgba(48,43,32,.06); }
+.saved-bookmark-card .saved-bookmark-icon { width: 18px; height: 24px; margin: 0 auto; }
+.saved-bookmark-card span, .saved-section-top span { display: block; color: #a18d57; font-size: 8px; font-weight: 850; letter-spacing: .15em; }
+.saved-bookmark-card strong, .saved-bookmark-card small { display: block; }
+.saved-bookmark-card strong { margin-top: 4px; color: var(--ink); font: 700 20px Georgia, serif; }
+.saved-bookmark-card small { margin-top: 4px; color: var(--muted); font: 11px/1.4 Georgia, serif; }
+.saved-bookmark-card button { padding: 9px 12px; border: 1px solid #b9c9c0; border-radius: 8px; color: var(--sage); background: var(--sage-soft); font-size: 10px; font-weight: 850; }
+.saved-section { margin-top: 22px; border: 1px solid #d9d4c8; border-radius: 8px; overflow: hidden; background: rgba(255,254,251,.88); box-shadow: 0 8px 24px rgba(48,43,32,.05); }
+.saved-section-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px; border-bottom: 1px solid var(--line); background: rgba(255,254,251,.94); }
+.saved-section-top strong { display: block; margin-top: 4px; font: 700 22px Georgia, serif; }
+.saved-tabs { display: inline-grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 9px; background: #f3f1ea; }
+.saved-tabs button { min-width: 112px; height: 34px; border: 0; border-radius: 6px; color: var(--muted); background: transparent; font-size: 10px; font-weight: 850; }
+.saved-tabs button.active { color: var(--sage-dark); background: var(--white); box-shadow: 0 2px 8px rgba(48,43,32,.08); }
+.saved-list { padding: 8px 18px 18px; }
+.saved-list button { width: 100%; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 13px; align-items: center; margin-top: 10px; padding: 13px 0; border: 0; border-bottom: 1px solid var(--line); color: var(--ink); background: transparent; text-align: left; }
+.saved-list button:last-child { border-bottom: 0; }
+.saved-list button:hover { color: var(--sage); }
+.saved-list button span, .saved-list button strong, .saved-list button small { display: block; min-width: 0; }
+.saved-list button strong { font: 700 13px Georgia, serif; }
+.saved-list button small { margin-top: 4px; overflow: hidden; color: var(--muted); font: 11px/1.45 Georgia, serif; white-space: nowrap; text-overflow: ellipsis; }
+.saved-list button b { padding: 7px 9px; border: 1px solid #b9c9c0; border-radius: 7px; color: var(--sage); background: var(--sage-soft); font-size: 9px; }
+.saved-list p { margin: 24px 0; color: var(--muted); font: italic 13px Georgia, serif; text-align: center; }
 
 .picker-backdrop { position: fixed; inset: 0; z-index: 41; width: 100%; height: 100%; border: 0; background: rgba(28,34,30,.28); cursor: default; backdrop-filter: blur(2px); }
 .passage-menu { position: fixed; z-index: 42; top: 82px; left: 50%; width: min(920px, calc(100vw - 36px)); max-height: calc(100vh - 106px); transform: translateX(-50%); overflow: auto; border: 1px solid #d8d5cb; border-radius: 16px; background: var(--white); box-shadow: 0 28px 80px rgba(29,35,30,.25); }
@@ -368,6 +393,14 @@ button, select { cursor: pointer; }
   .saved-group { width: calc(100vw - 32px); padding: 22px 0; }
   .saved-group > button { grid-template-columns: 24px minmax(0, 1fr); gap: 11px; }
   .saved-group > button::after { grid-column: 2; justify-self: start; margin-top: 3px; }
+  .saved-library-body { width: calc(100vw - 32px); padding: 24px 0 54px; }
+  .saved-bookmark-card { grid-template-columns: 28px minmax(0, 1fr); }
+  .saved-bookmark-card button { grid-column: 2; justify-self: start; }
+  .saved-section-top { align-items: stretch; flex-direction: column; }
+  .saved-tabs { width: 100%; }
+  .saved-tabs button { min-width: 0; }
+  .saved-list button { grid-template-columns: 24px minmax(0, 1fr); }
+  .saved-list button b { grid-column: 2; justify-self: start; }
 }
 
 @media (max-width: 520px) {
