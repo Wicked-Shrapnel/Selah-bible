@@ -35,6 +35,9 @@ test("server-renders the Selah Bible reader", async () => {
   assert.match(html, /Original language/);
   assert.match(html, /Notes/);
   assert.match(html, /Read Genesis 1:1/);
+  assert.match(html, /Bookmark Genesis chapter 1/);
+  assert.match(html, />KJV</);
+  assert.doesNotMatch(html, /NKJV|license required|NKJV-ready foundation/i);
   assert.doesNotMatch(html, /codex-preview|Building your site|react-loading-skeleton/i);
 });
 
@@ -56,4 +59,13 @@ test("ships the attributed whole-Bible commentary dataset", async () => {
   assert.equal(genesis.entries[0].verseEnd, 2);
   assert.match(genesis.entries[0].text, /first verse of the Bible/i);
   assert.match(sourceNotes, /maps, photographs, charts, or\s+illustrations/i);
+});
+
+test("includes searchable passage selection, saved place, and commentary audio", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /placeholder="Search for a book/);
+  assert.match(page, /selah-reading-place-v1/);
+  assert.match(page, /setPicker\("chapters"\)/);
+  assert.match(page, /toggleCommentaryReading/);
+  assert.match(page, /Read commentary aloud/);
 });

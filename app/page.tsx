@@ -22,6 +22,7 @@ type CommentarySource = {
   mediaTypes: string[];
 };
 type CommentaryChapter = { source: CommentarySource; book: string; chapter: number; entries: CommentaryEntry[] };
+type SavedPlace = { book: string; chapter: number };
 
 const books: Book[] = [
   ["Genesis",50,"Old Testament"],["Exodus",40,"Old Testament"],["Leviticus",27,"Old Testament"],["Numbers",36,"Old Testament"],["Deuteronomy",34,"Old Testament"],
@@ -116,6 +117,7 @@ export default function Home() {
   const [chapter, setChapter] = useState(1);
   const [verses, setVerses] = useState<Verse[]>(genesisOne);
   const [picker, setPicker] = useState<Picker>(null);
+  const [bookFilter, setBookFilter] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [loadNotice, setLoadNotice] = useState("");
   const [activeVerse, setActiveVerse] = useState<number | null>(null);
@@ -137,6 +139,9 @@ export default function Home() {
   const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
   const [commentaryData, setCommentaryData] = useState<CommentaryChapter | null>(null);
   const [commentaryStatus, setCommentaryStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [bookmark, setBookmark] = useState<SavedPlace | null>(null);
+  const [isReadingCommentary, setIsReadingCommentary] = useState(false);
+  const [isCommentaryPaused, setIsCommentaryPaused] = useState(false);
   const cancelled = useRef(false);
   const activeAudio = useRef<HTMLAudioElement | null>(null);
 
@@ -150,11 +155,21 @@ export default function Home() {
     queueMicrotask(() => {
       const savedHighlights = localStorage.getItem("selah-highlights-v2");
       const savedNotes = localStorage.getItem("selah-notes-v2");
+      const savedPlace = localStorage.getItem("selah-reading-place-v1");
       if (savedHighlights) {
         const parsed = JSON.parse(savedHighlights) as string[] | Record<string, HighlightColor>;
         setHighlights(Array.isArray(parsed) ? Object.fromEntries(parsed.map((key) => [key, "gold" as HighlightColor])) : parsed);
       }
       if (savedNotes) setNotes(JSON.parse(savedNotes));
+      if (savedPlace) {
+        const parsed = JSON.parse(savedPlace) as SavedPlace;
+        const savedBook = books.find((book) => book.name === parsed.book);
+        if (savedBook && parsed.chapter >= 1 && parsed.chapter <= savedBook.chapters) {
+          setBookmark(parsed);
+          setSelectedBook(savedBook);
+          setChapter(parsed.chapter);
+        }
+      }
     });
   }, []);
 
@@ -245,6 +260,8 @@ export default function Home() {
       window.speechSynthesis?.cancel();
       setIsReading(false);
       setIsPaused(false);
+      setIsReadingCommentary(false);
+      setIsCommentaryPaused(false);
       setActiveVerse(null);
       setSelectedForHighlight([]);
       loadChapter();
@@ -262,6 +279,8 @@ export default function Home() {
     }
     setIsReading(false);
     setIsPaused(false);
+    setIsReadingCommentary(false);
+    setIsCommentaryPaused(false);
     setActiveVerse(null);
   }, []);
 
@@ -519,7 +538,14 @@ export default function Home() {
   const chooseBook = (book: Book) => {
     setSelectedBook(book);
     setChapter(1);
+    setBookFilter("");
     setPicker("chapters");
+  };
+
+  const saveReadingPlace = () => {
+    const place = { book: selectedBook.name, chapter };
+    localStorage.setItem("selah-reading-place-v1", JSON.stringify(place));
+    setBookmark(place);
   };
 
   const goToAdjacentChapter = (direction: -1 | 1) => {
@@ -536,6 +562,8 @@ export default function Home() {
 
   const oldTestament = useMemo(() => books.filter((book) => book.testament === "Old Testament"), []);
   const newTestament = useMemo(() => books.filter((book) => book.testament === "New Testament"), []);
+  const filteredOldTestament = useMemo(() => oldTestament.filter((book) => book.name.toLowerCase().includes(bookFilter.trim().toLowerCase())), [bookFilter, oldTestament]);
+  const filteredNewTestament = useMemo(() => newTestament.filter((book) => book.name.toLowerCase().includes(bookFilter.trim().toLowerCase())), [bookFilter, newTestament]);
   const sortedVoices = useMemo(() => voices.filter((voice) => voice.lang.toLowerCase().startsWith("en")).sort((a, b) => voiceRank(a) - voiceRank(b) || a.name.localeCompare(b.name)), [voices]);
   const activeLexicon = selectedBook.testament === "Old Testament" ? hebrewLexicon : greekLexicon;
   const selectedLookupEntry = useMemo(() => {
@@ -553,6 +581,39 @@ export default function Home() {
   }, [commentaryData, selectedVerse]);
   const chapterNotes = verses.filter((verse) => Boolean(notes[verseKey(verse.id)]));
   const noteValue = notes[verseKey(selectedVerse)] || "";
+  const isCurrentPlaceBookmarked = bookmark?.book === selectedBook.name && bookmark.chapter === chapter;
+
+  const toggleCommentaryReading = () => {
+    if (!activeCommentaryEntry || !("speechSynthesis" in window)) return;
+    if (isReadingCommentary) {
+      if (isCommentaryPaused) {
+        window.speechSynthesis.resume();
+        setIsCommentaryPaused(false);
+      } else {
+        window.speechSynthesis.pause();
+        setIsCommentaryPaused(true);
+      }
+      return;
+    }
+
+    stopReading();
+    const utterance = new SpeechSynthesisUtterance(
+      `${selectedBook.name} ${chapter}. ${activeCommentaryEntry.heading}. ${activeCommentaryEntry.text}`,
+    );
+    utterance.rate = rate;
+    utterance.voice = voices.find((voice) => voice.name === voiceName) || bestVoice(voices) || null;
+    utterance.onend = () => {
+      setIsReadingCommentary(false);
+      setIsCommentaryPaused(false);
+    };
+    utterance.onerror = () => {
+      setIsReadingCommentary(false);
+      setIsCommentaryPaused(false);
+    };
+    setIsReadingCommentary(true);
+    setIsCommentaryPaused(false);
+    window.speechSynthesis.speak(utterance);
+  };
 
   return (
     <main className="app-shell">
@@ -575,7 +636,7 @@ export default function Home() {
         </div>
 
         <div className="header-actions">
-          <label className="version-select"><span className="sr-only">Bible version</span><select defaultValue="kjv"><option value="kjv">KJV · demo</option><option disabled>NKJV · license required</option></select></label>
+          <span className="translation-badge">KJV</span>
           <button className="avatar" aria-label="Profile">BL</button>
         </div>
       </header>
@@ -584,40 +645,58 @@ export default function Home() {
         <>
           <button className="picker-backdrop" onClick={() => setPicker(null)} aria-label="Close passage picker" />
           <section className={`passage-menu ${picker === "books" ? "book-menu" : "chapter-menu"}`} aria-label={picker === "books" ? "Books of the Bible" : `Chapters in ${selectedBook.name}`}>
-            <div className="passage-menu-heading">
-              <div><span>{picker === "books" ? "BIBLE" : selectedBook.name.toUpperCase()}</span><h2>{picker === "books" ? "Choose a book" : "Choose a chapter"}</h2></div>
-              <button onClick={() => setPicker(null)} aria-label="Close">×</button>
-            </div>
             {picker === "books" ? (
-              <div className="testament-columns">
-                {[{ title: "Old Testament", items: oldTestament }, { title: "New Testament", items: newTestament }].map((group) => (
-                  <div key={group.title} className="testament-group">
-                    <h3>{group.title}</h3>
-                    <div className="book-grid">
-                      {group.items.map((book) => <button key={book.name} className={book.name === selectedBook.name ? "selected" : ""} onClick={() => chooseBook(book)}>{book.name}</button>)}
+              <>
+                <div className="passage-menu-heading">
+                  <div><span>BIBLE</span><h2>Choose a book</h2></div>
+                  <button onClick={() => setPicker(null)} aria-label="Close">×</button>
+                </div>
+                <label className="book-search">
+                  <span className="sr-only">Filter Bible books</span>
+                  <b aria-hidden="true">⌕</b>
+                  <input autoFocus value={bookFilter} onChange={(event) => setBookFilter(event.target.value)} placeholder="Search for a book…" />
+                </label>
+                <div className="testament-columns">
+                  {[{ title: "Old Testament", items: filteredOldTestament }, { title: "New Testament", items: filteredNewTestament }].map((group) => (
+                    <div key={group.title} className="testament-group">
+                      <h3>{group.title}</h3>
+                      <div className="book-grid">
+                        {group.items.map((book) => <button key={book.name} className={book.name === selectedBook.name ? "selected" : ""} onClick={() => chooseBook(book)}>{book.name}</button>)}
+                        {group.items.length === 0 && <p className="no-books">No matching books</p>}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </>
             ) : (
-              <div className="chapter-grid">
-                {Array.from({ length: selectedBook.chapters }, (_, index) => index + 1).map((number) => (
-                  <button key={number} className={number === chapter ? "selected" : ""} onClick={() => { setChapter(number); setPicker(null); }}>{number}</button>
-                ))}
-              </div>
+              <>
+                <div className="chapter-menu-heading">
+                  <button onClick={() => setPicker("books")} aria-label="Back to books">←</button>
+                  <div><strong>CHAPTER</strong><span>{selectedBook.name}</span></div>
+                  <button onClick={() => setPicker(null)}>Cancel</button>
+                </div>
+                <div className="chapter-grid">
+                  {Array.from({ length: selectedBook.chapters }, (_, index) => index + 1).map((number) => (
+                    <button key={number} className={number === chapter ? "selected" : ""} onClick={() => { setChapter(number); setPicker(null); }}>{number}</button>
+                  ))}
+                </div>
+              </>
             )}
           </section>
         </>
       )}
-
-      <section className="license-note"><span>NKJV-ready foundation</span><p>Public-domain KJV text is used until a licensed NKJV provider is connected.</p></section>
 
       <div className={`workspace ${studyCollapsed ? "study-collapsed" : ""}`}>
         <article className="reader">
           <div className="reader-heading">
             <div>
               <p className="eyebrow">{selectedBook.testament.toUpperCase()}</p>
-              <h1>{selectedBook.name}</h1>
+              <div className="book-title-line">
+                <h1>{selectedBook.name}</h1>
+                <button className={isCurrentPlaceBookmarked ? "bookmarked" : ""} onClick={saveReadingPlace} aria-label={`Bookmark ${selectedBook.name} chapter ${chapter}`} title={isCurrentPlaceBookmarked ? "Current reading place saved" : "Save this reading place"}>
+                  {isCurrentPlaceBookmarked ? "★" : "☆"}
+                </button>
+              </div>
               <p className="subtitle">Chapter {chapter}</p>
             </div>
             <div className="chapter-tools"><span>{verses.length ? `${verses.length} verses` : ""}</span></div>
@@ -717,7 +796,12 @@ export default function Home() {
                   ) : activeCommentaryEntry && commentaryData ? (
                     <>
                       <div className="commentary-card">
-                        <span className="card-label">COMMENTARY · {activeCommentaryEntry.heading.toUpperCase()}</span>
+                        <div className="commentary-card-top">
+                          <span className="card-label">COMMENTARY · {activeCommentaryEntry.heading.toUpperCase()}</span>
+                          <button className={isReadingCommentary ? "active" : ""} onClick={toggleCommentaryReading} aria-label={isReadingCommentary && !isCommentaryPaused ? "Pause commentary" : "Read commentary aloud"}>
+                            {isReadingCommentary && !isCommentaryPaused ? "Ⅱ Pause" : "▶ Read aloud"}
+                          </button>
+                        </div>
                         <h2>{selectedBook.name} {chapter}:{activeCommentaryEntry.verseStart}{activeCommentaryEntry.verseEnd !== activeCommentaryEntry.verseStart ? `–${activeCommentaryEntry.verseEnd}` : ""}</h2>
                         <p>{activeCommentaryEntry.text}</p>
                         <div className="commentary-author">
