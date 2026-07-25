@@ -217,6 +217,7 @@ export default function Home() {
   const pendingSavedVerse = useRef<number | null>(null);
   const bibleBookCache = useRef<Record<string, BibleSourceBook>>({});
   const voicePreferencesLoaded = useRef(false);
+  const readingSession = useRef(0);
 
   const passageKey = `${selectedBook.name}-${chapter}`;
   const verseKey = (id: number) => `${passageKey}-${id}`;
@@ -276,11 +277,10 @@ export default function Home() {
     const closeMenusOnOutsideClick = (event: PointerEvent) => {
       const target = event.target as Node;
       if (picker === "chapters" && !passagePickerRef.current?.contains(target)) setPicker(null);
-      if (audioSettingsOpen && !savedPanelRef.current?.contains(target)) setAudioSettingsOpen(false);
     };
     document.addEventListener("pointerdown", closeMenusOnOutsideClick);
     return () => document.removeEventListener("pointerdown", closeMenusOnOutsideClick);
-  }, [audioSettingsOpen, picker]);
+  }, [picker]);
 
   useEffect(() => {
     if (!("speechSynthesis" in window)) return;
@@ -394,6 +394,7 @@ export default function Home() {
   }, [selectedBook, chapter, loadBibleChapter]);
 
   const stopReading = useCallback(() => {
+    readingSession.current += 1;
     cancelled.current = true;
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     if (activeAudio.current) {
@@ -409,7 +410,8 @@ export default function Home() {
     setActiveVerse(null);
   }, []);
 
-  function playBrowserVerse(index: number) {
+  function playBrowserVerse(index: number, session = readingSession.current) {
+    if (readingSession.current !== session) return;
     const verse = verses[index];
     if (!verse) {
       setIsReading(false);
@@ -430,21 +432,23 @@ export default function Home() {
     const voice = voices.find((item) => item.name === voiceName) || bestVoice(voices);
     if (voice) utterance.voice = voice;
     utterance.onend = () => {
-      if (!cancelled.current && index + 1 < verses.length) playBrowserVerse(index + 1);
+      if (readingSession.current !== session) return;
+      if (!cancelled.current && index + 1 < verses.length) playBrowserVerse(index + 1, session);
       else if (!cancelled.current) {
         setIsReading(false);
         setActiveVerse(null);
       }
     };
     utterance.onerror = () => {
+      if (readingSession.current !== session) return;
       setIsReading(false);
       setActiveVerse(null);
     };
     window.speechSynthesis.speak(utterance);
   }
 
-  async function playSavedVerse(index: number, includeIntro: boolean) {
-    if (cancelled.current) return;
+  async function playSavedVerse(index: number, includeIntro: boolean, session = readingSession.current) {
+    if (cancelled.current || readingSession.current !== session) return;
     if (includeIntro) {
       setActiveVerse(null);
       const introOk = await new Promise<boolean>((resolve) => {
@@ -464,17 +468,19 @@ export default function Home() {
           resolve(false);
         });
       });
-      if (!introOk || cancelled.current) {
+      if (cancelled.current || readingSession.current !== session) return;
+      if (!introOk) {
         setSavedAudioChapters((current) => {
           const next = new Set(current);
           next.delete(chapterAudioKey);
           return next;
         });
-        playBrowserVerse(index);
+        playBrowserVerse(index, session);
         return;
       }
     }
 
+    if (readingSession.current !== session) return;
     const verse = verses[index];
     if (!verse) {
       setIsReading(false);
@@ -504,18 +510,19 @@ export default function Home() {
       });
     });
 
-    if (!verseOk || cancelled.current) {
+    if (cancelled.current || readingSession.current !== session) return;
+    if (!verseOk) {
       setSavedAudioChapters((current) => {
         const next = new Set(current);
         next.delete(chapterAudioKey);
         return next;
       });
-      playBrowserVerse(index);
+      playBrowserVerse(index, session);
       return;
     }
 
-    if (!cancelled.current && index + 1 < verses.length) {
-      void playSavedVerse(index + 1, false);
+    if (!cancelled.current && readingSession.current === session && index + 1 < verses.length) {
+      void playSavedVerse(index + 1, false, session);
     } else if (!cancelled.current) {
       setIsReading(false);
       setActiveVerse(null);
@@ -524,6 +531,8 @@ export default function Home() {
 
   function startReading(verseId = selectedVerse) {
     if (!verses.length) return;
+    const session = readingSession.current + 1;
+    readingSession.current = session;
     cancelled.current = false;
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     if (activeAudio.current) {
@@ -535,14 +544,16 @@ export default function Home() {
     setIsPaused(false);
     const index = Math.max(0, verses.findIndex((verse) => verse.id === verseId));
     if (savedAudioChapters.has(chapterAudioKey)) {
-      void playSavedVerse(index, verseId === verses[0]?.id);
+      void playSavedVerse(index, verseId === verses[0]?.id, session);
       return;
     }
-    playBrowserVerse(index);
+    playBrowserVerse(index, session);
   }
 
   const jumpToVerse = (id: number) => {
     const index = Math.max(0, verses.findIndex((verse) => verse.id === id));
+    const session = readingSession.current + 1;
+    readingSession.current = session;
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     if (activeAudio.current) {
       activeAudio.current.pause();
@@ -552,8 +563,8 @@ export default function Home() {
     cancelled.current = false;
     setIsReading(true);
     setIsPaused(false);
-    if (savedAudioChapters.has(chapterAudioKey)) void playSavedVerse(index, false);
-    else playBrowserVerse(index);
+    if (savedAudioChapters.has(chapterAudioKey)) void playSavedVerse(index, false, session);
+    else playBrowserVerse(index, session);
   };
 
   const togglePause = () => {
@@ -987,20 +998,33 @@ export default function Home() {
 
         <div className="header-actions" ref={savedPanelRef}>
           <span className="translation-badge">KJV</span>
-          <button className="settings-cog-button" onClick={() => setAudioSettingsOpen((current) => !current)} aria-expanded={audioSettingsOpen} aria-label="Open app settings" title="Settings">
+          <button className="settings-cog-button" onClick={() => { setSavedPanelOpen(false); setAudioSettingsOpen(true); }} aria-expanded={audioSettingsOpen} aria-label="Open app settings" title="Settings">
             <span aria-hidden="true">&#9881;</span>
           </button>
-          {audioSettingsOpen && (
-            <div className="site-settings-popover" role="dialog" aria-label="App settings">
-              <div className="settings-popover-heading">
-                <span>SETTINGS</span>
-                <strong>Read aloud</strong>
+          <button className="saved-library-button" onClick={() => { setAudioSettingsOpen(false); setSavedPanelOpen((current) => !current); }} aria-expanded={savedPanelOpen} aria-label="Open saved highlights, notes, and reading place">
+            <span aria-hidden="true">⌑</span> Saved {savedCount > 0 && <small>{savedCount}</small>}
+          </button>
+        </div>
+      </header>
+
+      {audioSettingsOpen && (
+        <section className="settings-window" aria-modal="true" role="dialog" aria-label="App settings">
+          <div className="settings-window-heading">
+            <div><span>SETTINGS</span><strong>Read aloud</strong></div>
+            <button onClick={() => setAudioSettingsOpen(false)} aria-label="Close settings">X</button>
+          </div>
+          <div className="settings-window-body">
+            <div className="settings-card">
+              <div className="settings-card-heading">
+                <span>AUDIO</span>
+                <strong>Voice and playback</strong>
               </div>
               <label><span>Voice</span><select value={voiceName || "local"} onChange={(event) => { const value = event.target.value; const next = value === "local" ? bestVoice(visibleVoices)?.name || "" : value; setVoiceName(next); localStorage.setItem("selah-voice", next); }}>
                 <option value="local">Installed browser voice{voiceName ? ` - ${voiceName}` : ""}</option>
                 <optgroup label="Shown voices">{visibleVoices.map((voice) => <option key={voice.name} value={voice.name}>{voice.name}{voice.name.toLowerCase().includes("microsoft david") ? " - default" : ""}</option>)}</optgroup>
               </select></label>
-              <details className="voice-picker-panel">
+              <label><span>Speed</span><input type="range" min="0.7" max="1.25" step="0.05" value={rate} onChange={(event) => setRate(Number(event.target.value))} /><strong>{rate.toFixed(2)}x</strong></label>
+              <details className="voice-picker-panel" open>
                 <summary><span>Shown voices</span><strong>{enabledVoiceNames.length || sortedVoices.length}</strong></summary>
                 <div className="voice-toggle-list">
                   {sortedVoices.map((voice) => (
@@ -1012,16 +1036,17 @@ export default function Home() {
                   ))}
                 </div>
               </details>
-              <p className="voice-availability">No API key is required. Selah uses installed browser voices first, and will automatically use saved chapter audio files when you add them under <code>public/audio</code>.</p>
-              <p className="voice-availability">{savedAudioChapters.has(chapterAudioKey) ? "Saved audio is available for this chapter." : "No saved audio file found for this chapter yet."}</p>
-              <label><span>Speed</span><input type="range" min="0.7" max="1.25" step="0.05" value={rate} onChange={(event) => setRate(Number(event.target.value))} /><strong>{rate.toFixed(2)}x</strong></label>
             </div>
-          )}
-          <button className="saved-library-button" onClick={() => { setAudioSettingsOpen(false); setSavedPanelOpen((current) => !current); }} aria-expanded={savedPanelOpen} aria-label="Open saved highlights, notes, and reading place">
-            <span aria-hidden="true">⌑</span> Saved {savedCount > 0 && <small>{savedCount}</small>}
-          </button>
-        </div>
-      </header>
+            <div className="settings-card settings-card-muted">
+              <div className="settings-card-heading">
+                <span>SAVED AUDIO</span>
+                <strong>{savedAudioChapters.has(chapterAudioKey) ? "Available for this chapter" : "No saved audio yet"}</strong>
+              </div>
+              <p>No API key is required. Selah uses installed browser voices first, and will automatically use saved chapter audio files when you add them under <code>public/audio</code>.</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {savedPanelOpen && (
         <section className="saved-library saved-library-window" aria-modal="true" role="dialog" aria-label="Saved highlights and notes">

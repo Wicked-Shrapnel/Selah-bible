@@ -109,7 +109,9 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /selah-enabled-voices/);
   assert.match(page, /toggleVoiceVisibility/);
   assert.match(page, /voice-picker-panel/);
+  assert.match(page, /settings-window/);
   assert.match(page, /visibleVoices/);
+  assert.match(page, /readingSession/);
   assert.match(page, /toggleCommentaryReading/);
   assert.match(page, /Read commentary aloud/);
   assert.match(page, /Add section note/);
