@@ -92,6 +92,32 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 - `npm test`: build the starter and verify its rendered loading skeleton
 - `npm run db:generate`: generate Drizzle migrations after schema changes
 
+## Chapter Audio
+
+Selah reads saved chapter audio from `public/audio/<book-slug>/<chapter>/`.
+Each chapter folder should contain `intro.wav` plus one WAV file per verse, such
+as `1.wav`, `2.wav`, and so on. The app automatically checks
+`public/audio/manifest.json` and uses the saved audio before falling back to the
+browser's installed speech voices.
+
+For local Windows voice generation:
+
+```powershell
+.\scripts\generate-chapter-audio.ps1 -Book "John" -Chapter 3 -Voice "Microsoft David Desktop"
+```
+
+For Azure Speech cloud voices, set your key and region first:
+
+```powershell
+$env:AZURE_SPEECH_KEY = "your-key"
+$env:AZURE_SPEECH_REGION = "eastus"
+.\scripts\generate-azure-chapter-audio.ps1 -Book "John" -Chapter 3 -Voice "en-US-AvaNeural"
+```
+
+Other good Azure voice names to try are `en-US-AndrewNeural`,
+`en-US-BrianNeural`, and `en-US-EmmaNeural`. Add `-Rebuild` when you want to
+replace existing audio files for a chapter.
+
 ## Learn More
 
 - [vinext Documentation](https://github.com/cloudflare/vinext)

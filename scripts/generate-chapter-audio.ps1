@@ -41,7 +41,7 @@ $bookSlug = Get-BookSlug -Name $Book
 $chapterDir = Join-Path $baseDir (Join-Path $bookSlug $Chapter)
 $chapterKey = "$bookSlug-$Chapter"
 
-$biblePath = Join-Path $bibleDir ($Book -replace '\s+', '') + ".json"
+$biblePath = Join-Path $bibleDir (($Book -replace '\s+', '') + ".json")
 if (-not (Test-Path $biblePath)) {
   throw "Bible file not found at $biblePath."
 }
