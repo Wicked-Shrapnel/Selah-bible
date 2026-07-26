@@ -146,6 +146,10 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.doesNotMatch(page, /Definition\. \$\{entry\.meaning\}/);
   assert.match(page, /visibleVoices/);
   assert.match(page, /readingSession/);
+  assert.match(page, /chapterMp3AudioPath/);
+  assert.match(page, /playSavedChapterAudio/);
+  assert.match(page, /chapterAudioFiles/);
+  assert.match(page, /verseWordCount/);
   assert.match(page, /toggleCommentaryReading/);
   assert.match(page, /studyPanelRef/);
   assert.match(page, /panel\.scrollTo\(\{ top: Math\.max\(0, targetTop\), behavior: "smooth" \}\)/);

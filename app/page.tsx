@@ -15,7 +15,7 @@ type OriginalWordToken = { text: string; strongs?: string[] };
 type OriginalLanguageBook = { source: string; verses: Record<string, OriginalWordToken[]> };
 type StrongDictionaryEntry = { lemma: string; transliteration: string; pronunciation: string; definition: string; kjv: string };
 type StrongDictionary = Record<string, StrongDictionaryEntry>;
-type SavedAudioManifest = { chapters: string[] };
+type SavedAudioManifest = { chapters: string[]; chapterFiles?: Record<string, string>; format?: string; source?: string };
 type CommentaryReference = { osis: string; label: string };
 type CommentaryEntry = { anchorVerse: number; verseStart: number; verseEnd: number; heading: string; text: string; references: CommentaryReference[] };
 type CommentarySource = {
@@ -145,6 +145,10 @@ function chapterAudioBase(book: string, chapterNumber: number) {
   return `/audio/${bookSlug(book)}/${chapterNumber}`;
 }
 
+function chapterMp3AudioPath(book: string, chapterNumber: number) {
+  return `/audio/${bookSlug(book)}/${chapterNumber}.mp3`;
+}
+
 function bibleFileName(name: string) {
   return `${name.replace(/\s+/g, "")}.json`;
 }
@@ -179,6 +183,10 @@ function excerptText(text: string, maxLength = 190) {
   return `${trimmed.slice(0, lastSpace > 80 ? lastSpace : trimmed.length).trim()}...`;
 }
 
+function verseWordCount(text: string) {
+  return text.trim().split(/\s+/).filter(Boolean).length || 1;
+}
+
 export default function Home() {
   const [selectedBook, setSelectedBook] = useState(books[0]);
   const [chapter, setChapter] = useState(1);
@@ -196,6 +204,7 @@ export default function Home() {
   const [voiceName, setVoiceName] = useState("");
   const [enabledVoiceNames, setEnabledVoiceNames] = useState<string[]>([]);
   const [savedAudioChapters, setSavedAudioChapters] = useState<Set<string>>(new Set());
+  const [chapterAudioFiles, setChapterAudioFiles] = useState<Record<string, string>>({});
   const [highlights, setHighlights] = useState<Record<string, HighlightColor>>({});
   const [savedTextCache, setSavedTextCache] = useState<SavedTextCache>({});
   const [redLetterMap, setRedLetterMap] = useState<Record<string, string>>({});
@@ -231,6 +240,7 @@ export default function Home() {
   const [commentaryWordIndex, setCommentaryWordIndex] = useState<number | null>(null);
   const cancelled = useRef(false);
   const activeAudio = useRef<HTMLAudioElement | null>(null);
+  const syncedAudioVerse = useRef<number | null>(null);
   const passagePickerRef = useRef<HTMLDivElement | null>(null);
   const savedPanelRef = useRef<HTMLDivElement | null>(null);
   const studyPanelRef = useRef<HTMLElement | null>(null);
@@ -247,7 +257,19 @@ export default function Home() {
   const verseKey = (id: number) => `${passageKey}-${id}`;
   const chapterAudioKey = `${bookSlug(selectedBook.name)}-${chapter}`;
   const chapterAudioPrefix = chapterAudioBase(selectedBook.name, chapter);
+  const chapterMp3Url = chapterAudioFiles[chapterAudioKey] || chapterMp3AudioPath(selectedBook.name, chapter);
+  const hasChapterMp3Audio = Boolean(chapterAudioFiles[chapterAudioKey]);
   const selected = verses.find((verse) => verse.id === selectedVerse) || verses[0];
+  const chapterAudioProgress = useMemo(() => {
+    const counts = verses.map((verse) => verseWordCount(verse.text));
+    const total = counts.reduce((sum, count) => sum + count, 0) || 1;
+    let cumulative = 0;
+    return counts.map((count, index) => {
+      const start = cumulative / total;
+      cumulative += count;
+      return { verseId: verses[index]?.id || index + 1, start, end: cumulative / total };
+    });
+  }, [verses]);
 
   const loadBibleChapter = useCallback(async (bookName: string, chapterNumber: number) => {
     const fileName = bibleFileName(bookName);
@@ -384,6 +406,7 @@ export default function Home() {
       .then((data: SavedAudioManifest | null) => {
         if (!data || ignore) return;
         setSavedAudioChapters(new Set(data.chapters || []));
+        setChapterAudioFiles(data.chapterFiles || {});
       })
       .catch(() => {});
     return () => { ignore = true; };
@@ -446,6 +469,12 @@ export default function Home() {
     }
     queueMicrotask(() => {
       window.speechSynthesis?.cancel();
+      if (activeAudio.current) {
+        activeAudio.current.pause();
+        activeAudio.current.currentTime = 0;
+        activeAudio.current = null;
+      }
+      syncedAudioVerse.current = null;
       setIsReading(false);
       setIsPaused(false);
       setIsReadingCommentary(false);
@@ -478,6 +507,7 @@ export default function Home() {
       activeAudio.current.currentTime = 0;
       activeAudio.current = null;
     }
+    syncedAudioVerse.current = null;
     setIsReading(false);
     setIsPaused(false);
     setIsReadingCommentary(false);
@@ -521,6 +551,65 @@ export default function Home() {
       setActiveVerse(null);
     };
     window.speechSynthesis.speak(utterance);
+  }
+
+  async function playSavedChapterAudio(index: number, session = readingSession.current) {
+    if (cancelled.current || readingSession.current !== session) return;
+    const audio = new Audio(chapterMp3Url);
+    activeAudio.current = audio;
+    syncedAudioVerse.current = null;
+    audio.preload = "auto";
+
+    const syncActiveVerse = () => {
+      if (cancelled.current || readingSession.current !== session || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
+      const progress = Math.min(0.9999, Math.max(0, audio.currentTime / audio.duration));
+      const activeProgress = chapterAudioProgress.find((item) => progress >= item.start && progress < item.end) || chapterAudioProgress.at(-1);
+      if (!activeProgress || syncedAudioVerse.current === activeProgress.verseId) return;
+      syncedAudioVerse.current = activeProgress.verseId;
+      setActiveVerse(activeProgress.verseId);
+      setSelectedVerse(activeProgress.verseId);
+      document.getElementById(`verse-${activeProgress.verseId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+
+    audio.onloadedmetadata = () => {
+      const target = chapterAudioProgress[index];
+      if (target && Number.isFinite(audio.duration) && audio.duration > 0) {
+        audio.currentTime = Math.max(0, Math.min(audio.duration - 0.25, audio.duration * target.start));
+      }
+      syncActiveVerse();
+    };
+    audio.ontimeupdate = syncActiveVerse;
+    audio.onended = () => {
+      if (activeAudio.current === audio) activeAudio.current = null;
+      if (readingSession.current !== session) return;
+      setIsReading(false);
+      setIsPaused(false);
+      setActiveVerse(null);
+      syncedAudioVerse.current = null;
+    };
+    audio.onerror = () => {
+      if (activeAudio.current === audio) activeAudio.current = null;
+      if (readingSession.current !== session) return;
+      setSavedAudioChapters((current) => {
+        const next = new Set(current);
+        next.delete(chapterAudioKey);
+        return next;
+      });
+      setChapterAudioFiles((current) => {
+        const next = { ...current };
+        delete next[chapterAudioKey];
+        return next;
+      });
+      playBrowserVerse(index, session);
+    };
+
+    try {
+      await audio.play();
+      syncActiveVerse();
+    } catch {
+      if (activeAudio.current === audio) activeAudio.current = null;
+      if (readingSession.current === session) playBrowserVerse(index, session);
+    }
   }
 
   async function playSavedVerse(index: number, includeIntro: boolean, session = readingSession.current) {
@@ -619,6 +708,10 @@ export default function Home() {
     setIsReading(true);
     setIsPaused(false);
     const index = Math.max(0, verses.findIndex((verse) => verse.id === verseId));
+    if (hasChapterMp3Audio) {
+      void playSavedChapterAudio(index, session);
+      return;
+    }
     if (savedAudioChapters.has(chapterAudioKey)) {
       void playSavedVerse(index, verseId === verses[0]?.id, session);
       return;
@@ -636,10 +729,12 @@ export default function Home() {
       activeAudio.current.currentTime = 0;
       activeAudio.current = null;
     }
+    syncedAudioVerse.current = null;
     cancelled.current = false;
     setIsReading(true);
     setIsPaused(false);
-    if (savedAudioChapters.has(chapterAudioKey)) void playSavedVerse(index, false, session);
+    if (hasChapterMp3Audio) void playSavedChapterAudio(index, session);
+    else if (savedAudioChapters.has(chapterAudioKey)) void playSavedVerse(index, false, session);
     else playBrowserVerse(index, session);
   };
 
