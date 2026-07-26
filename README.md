@@ -27,7 +27,7 @@ Implement a second commentary alongside the first one to aid in the reader under
 Improve the original language feature. 
 Add other versions if I can find a way to do it legally. Preferably New King James. 
 Add scripture cross-references and version comparison. 
-Maybe do integration with U version so that a user can save their highlighted versus. 
+Maybe do integration with Youversion so that a user can import their highlighted versus. 
 Implement a daily streak feature. 
 
 
