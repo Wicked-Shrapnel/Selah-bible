@@ -130,9 +130,11 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.doesNotMatch(page, /\{color\} highlight/);
   assert.match(page, /selah-highlight-color/);
   assert.match(page, /selah-audio-dock-collapsed/);
-  assert.match(page, /selah-enabled-voices/);
-  assert.match(page, /toggleVoiceVisibility/);
-  assert.match(page, /voice-picker-panel/);
+  assert.match(page, /Official audio Bible/);
+  assert.match(page, /davidVoice/);
+  assert.doesNotMatch(page, /selah-enabled-voices/);
+  assert.doesNotMatch(page, /toggleVoiceVisibility/);
+  assert.doesNotMatch(page, /voice-picker-panel/);
   assert.match(page, /settings-window/);
   assert.match(page, /selah-theme/);
   assert.match(page, /themePreference/);
@@ -144,7 +146,7 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /selah-read-original-definition/);
   assert.match(page, /new SpeechSynthesisUtterance\(entry\.meaning\)/);
   assert.doesNotMatch(page, /Definition\. \$\{entry\.meaning\}/);
-  assert.match(page, /visibleVoices/);
+  assert.doesNotMatch(page, /visibleVoices/);
   assert.match(page, /readingSession/);
   assert.match(page, /chapterMp3AudioPath/);
   assert.match(page, /playSavedChapterAudio/);
@@ -175,5 +177,6 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(styles, /:root\[data-theme="true-dark"\]/);
   assert.match(styles, /--study-panel-width/);
   assert.match(styles, /cursor: col-resize/);
+  assert.match(styles, /audio-source-summary/);
   assert.match(styles, /\.study-panel \{ position: sticky; top: 72px;/);
 });

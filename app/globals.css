@@ -426,18 +426,11 @@ button, select { cursor: pointer; }
 .audio-settings-popover select { grid-column: 2 / -1; width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 6px; background: white; font-size: 10px; }
 .audio-settings-popover input { accent-color: var(--sage); width: 100%; }
 .audio-settings-popover strong { font-size: 9px; }
-.voice-picker-panel { margin: 11px 0 0 62px; padding-top: 11px; border-top: 1px solid var(--line); }
-.settings-card .voice-picker-panel { margin: 16px 0 0; padding-top: 16px; }
-.voice-picker-panel summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--sage); cursor: pointer; font-size: 10px; font-weight: 800; list-style-position: outside; }
-.voice-picker-panel summary span { color: var(--sage); font-size: 10px; }
-.voice-picker-panel summary strong { min-width: 24px; padding: 3px 6px; border-radius: 99px; color: var(--white); background: var(--sage); text-align: center; }
-.voice-toggle-list { max-height: 150px; margin-top: 9px; padding-right: 3px; overflow: auto; }
-.audio-settings-popover .voice-toggle-row, .settings-card .voice-toggle-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 0; }
-.audio-settings-popover .voice-toggle-row input, .settings-card .voice-toggle-row input { width: 14px; height: 14px; }
-.voice-toggle-row span { overflow: hidden; color: var(--ink); font-size: 10px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; text-transform: none; }
-.voice-toggle-row small { color: var(--muted); font-size: 8px; font-weight: 800; text-transform: uppercase; }
-.voice-availability { margin: 9px 0 0 62px; color: var(--muted); font: 10px/1.4 Georgia, serif; }
-.voice-error { margin: 8px 0 0 62px; color: #9a3d36; font: 10px/1.4 Georgia, serif; }
+.audio-source-summary { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: rgba(247,244,237,.68); }
+.audio-source-summary span, .audio-source-summary strong { display: block; }
+.audio-source-summary span { color: #a18d57; font-size: 8px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+.audio-source-summary strong { margin-top: 4px; color: var(--sage); font: 700 13px Georgia, serif; }
+.audio-source-summary p { margin-top: 6px; font-size: 11px; }
 
 :root[data-theme="dark"] .topbar,
 :root[data-theme="dark"] .saved-library-heading,
