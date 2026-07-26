@@ -216,8 +216,6 @@ button, select { cursor: pointer; }
 .verse-word.pronunciation-ready { cursor: pointer; }
 .verse-word.word-selected { color: #173d30; background: #d9e9df; box-shadow: 0 0 0 2px #d9e9df; }
 .verse-row.red-letter-verse .verse-word { color: #9f2f2f; }
-.verse-row.red-letter-verse.highlight-gold:not(.reading) p,
-.verse-row.red-letter-verse.highlight-gold:not(.reading) .verse-word { color: #7f1717; }
 .verse-row.red-letter-verse .verse-word:hover { color: #7f2222; background: rgba(159,47,47,.09); }
 .verse-row.red-letter-verse .verse-word.word-selected { color: #7f2222; background: rgba(159,47,47,.12); box-shadow: 0 0 0 2px rgba(159,47,47,.12); }
 .verse-row.red-letter-verse.reading { border-left-color: #b54b4b; }
