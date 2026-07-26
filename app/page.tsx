@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 
 type Verse = { id: number; reference: string; text: string };
 type Book = { name: string; chapters: number; testament: "Old Testament" | "New Testament" };
@@ -36,6 +37,13 @@ type BibleSourceChapter = { chapter: string; verses: BibleSourceVerse[] };
 type BibleSourceBook = { book: string; chapters: BibleSourceChapter[] };
 
 const ENABLED_VOICES_STORAGE_KEY = "selah-enabled-voices";
+const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
+const MIN_STUDY_PANEL_WIDTH = 380;
+const MAX_STUDY_PANEL_WIDTH = 680;
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
 
 const books: Book[] = [
   ["Genesis",50,"Old Testament"],["Exodus",40,"Old Testament"],["Leviticus",27,"Old Testament"],["Numbers",36,"Old Testament"],["Deuteronomy",34,"Old Testament"],
@@ -210,6 +218,8 @@ export default function Home() {
   const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
   const [audioDockCollapsed, setAudioDockCollapsed] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
+  const [studyPanelWidth, setStudyPanelWidth] = useState(MIN_STUDY_PANEL_WIDTH);
+  const [isResizingStudy, setIsResizingStudy] = useState(false);
   const [readOriginalDefinition, setReadOriginalDefinition] = useState(false);
   const [commentaryData, setCommentaryData] = useState<CommentaryChapter | null>(null);
   const [commentaryStatus, setCommentaryStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -224,6 +234,7 @@ export default function Home() {
   const passagePickerRef = useRef<HTMLDivElement | null>(null);
   const savedPanelRef = useRef<HTMLDivElement | null>(null);
   const studyPanelRef = useRef<HTMLElement | null>(null);
+  const studyResizeStart = useRef({ x: 0, width: MIN_STUDY_PANEL_WIDTH });
   const pendingSavedVerse = useRef<number | null>(null);
   const bibleBookCache = useRef<Record<string, BibleSourceBook>>({});
   const originalLanguageBookCache = useRef<Record<string, OriginalLanguageBook>>({});
@@ -269,6 +280,7 @@ export default function Home() {
       const savedDockCollapsed = localStorage.getItem("selah-audio-dock-collapsed");
       const savedTheme = localStorage.getItem("selah-theme") as ThemePreference | null;
       const savedOriginalDefinition = localStorage.getItem("selah-read-original-definition");
+      const savedStudyPanelWidth = Number(localStorage.getItem(STUDY_PANEL_WIDTH_STORAGE_KEY));
       if (savedHighlights) {
         const parsed = JSON.parse(savedHighlights) as string[] | Record<string, HighlightColor>;
         setHighlights(Array.isArray(parsed) ? Object.fromEntries(parsed.map((key) => [key, "gold" as HighlightColor])) : parsed);
@@ -278,6 +290,7 @@ export default function Home() {
       if (savedDockCollapsed === "true") setAudioDockCollapsed(true);
       if (savedTheme && ["system", "light", "dark", "true-dark"].includes(savedTheme)) setThemePreference(savedTheme);
       if (savedOriginalDefinition === "true") setReadOriginalDefinition(true);
+      if (Number.isFinite(savedStudyPanelWidth)) setStudyPanelWidth(clampNumber(savedStudyPanelWidth, MIN_STUDY_PANEL_WIDTH, MAX_STUDY_PANEL_WIDTH));
       if (savedPlace) {
         const parsed = JSON.parse(savedPlace) as SavedPlace;
         const savedBook = books.find((book) => book.name === parsed.book);
@@ -300,6 +313,33 @@ export default function Home() {
     if (themePreference === "system") media.addEventListener("change", applyTheme);
     return () => media.removeEventListener("change", applyTheme);
   }, [themePreference]);
+
+  useEffect(() => {
+    if (!isResizingStudy) return;
+
+    const updateStudyWidth = (event: PointerEvent) => {
+      event.preventDefault();
+      const availableMax = Math.max(MIN_STUDY_PANEL_WIDTH, window.innerWidth - 520);
+      const maxWidth = Math.min(MAX_STUDY_PANEL_WIDTH, availableMax);
+      const delta = event.clientX - studyResizeStart.current.x;
+      const nextWidth = clampNumber(studyResizeStart.current.width - delta, MIN_STUDY_PANEL_WIDTH, maxWidth);
+      setStudyPanelWidth(nextWidth);
+      localStorage.setItem(STUDY_PANEL_WIDTH_STORAGE_KEY, String(Math.round(nextWidth)));
+    };
+
+    const stopResizing = () => setIsResizingStudy(false);
+    document.body.classList.add("study-resizing");
+    window.addEventListener("pointermove", updateStudyWidth);
+    window.addEventListener("pointerup", stopResizing, { once: true });
+    window.addEventListener("pointercancel", stopResizing, { once: true });
+
+    return () => {
+      document.body.classList.remove("study-resizing");
+      window.removeEventListener("pointermove", updateStudyWidth);
+      window.removeEventListener("pointerup", stopResizing);
+      window.removeEventListener("pointercancel", stopResizing);
+    };
+  }, [isResizingStudy]);
 
   useEffect(() => {
     const closeMenusOnOutsideClick = (event: PointerEvent) => {
@@ -1059,8 +1099,18 @@ export default function Home() {
     window.speechSynthesis.speak(utterance);
   };
 
+  const startStudyResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (studyCollapsed || window.innerWidth <= 820) return;
+    event.preventDefault();
+    studyResizeStart.current = { x: event.clientX, width: studyPanelWidth };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setIsResizingStudy(true);
+  };
+
+  const workspaceStyle = studyCollapsed ? undefined : ({ "--study-panel-width": `${studyPanelWidth}px` } as CSSProperties);
+
   return (
-    <main className="app-shell">
+    <main className="app-shell" style={workspaceStyle}>
       <header className="topbar">
         <div className="brand">
           <div className="brand-mark">S</div>
@@ -1274,7 +1324,7 @@ export default function Home() {
         </>
       )}
 
-      <div className={`workspace ${studyCollapsed ? "study-collapsed" : ""}`}>
+      <div className={`workspace ${studyCollapsed ? "study-collapsed" : ""} ${isResizingStudy ? "resizing-study" : ""}`}>
         <article className="reader">
           <div className="reader-heading">
             <div>
@@ -1405,6 +1455,7 @@ export default function Home() {
         </article>
 
         <aside ref={studyPanelRef} className={`study-panel ${mobileStudyOpen ? "mobile-open" : ""}`} aria-label="Study tools">
+          {!studyCollapsed && <button className="study-resize-handle" onPointerDown={startStudyResize} aria-label="Resize study panel" title="Drag to make the study panel wider" />}
           <button className="study-collapse" onClick={() => setStudyCollapsed(!studyCollapsed)} aria-label={studyCollapsed ? "Open study panel" : "Collapse study panel"}>{studyCollapsed ? "‹" : "›"}</button>
           {studyCollapsed ? (
             <div className="study-rail">
