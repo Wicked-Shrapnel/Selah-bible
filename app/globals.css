@@ -489,6 +489,101 @@ button, select { cursor: pointer; }
 :root[data-theme="dark"] .bookmark-glyph::after,
 :root[data-theme="dark"] .book-title-line button { background: var(--white); }
 :root[data-theme="dark"] .book-title-line button:hover .bookmark-glyph::after { background: var(--gold-soft); }
+:root[data-theme="dark"] {
+  --theme-control-ink: #eef6f0;
+  --theme-control-bg: #233129;
+  --theme-control-border: #44534c;
+  --theme-control-hover-bg: #2e4238;
+  --theme-control-shadow: 0 4px 14px rgba(0,0,0,.18);
+  --theme-control-tip-bg: #eef6f0;
+  --theme-control-tip-ink: #18211c;
+}
+:root[data-theme="true-dark"] {
+  --theme-control-ink: #eff3f7;
+  --theme-control-bg: #1d2630;
+  --theme-control-border: #37424d;
+  --theme-control-hover-bg: #283340;
+  --theme-control-shadow: 0 4px 14px rgba(0,0,0,.22);
+  --theme-control-tip-bg: #eef2f6;
+  --theme-control-tip-ink: #151b22;
+}
+:root[data-theme="dark"] .study-collapse,
+:root[data-theme="dark"] .study-rail button,
+:root[data-theme="dark"] .study-reference button,
+:root[data-theme="dark"] .commentary-card-top button,
+:root[data-theme="dark"] .commentary-source-tabs button,
+:root[data-theme="dark"] .word-study-control button,
+:root[data-theme="dark"] .lexicon-intro-row > button,
+:root[data-theme="dark"] .saved-tabs button,
+:root[data-theme="dark"] .saved-read-aloud,
+:root[data-theme="dark"] .saved-jump b,
+:root[data-theme="true-dark"] .study-collapse,
+:root[data-theme="true-dark"] .study-rail button,
+:root[data-theme="true-dark"] .study-reference button,
+:root[data-theme="true-dark"] .commentary-card-top button,
+:root[data-theme="true-dark"] .commentary-source-tabs button,
+:root[data-theme="true-dark"] .word-study-control button,
+:root[data-theme="true-dark"] .lexicon-intro-row > button,
+:root[data-theme="true-dark"] .saved-tabs button,
+:root[data-theme="true-dark"] .saved-read-aloud,
+:root[data-theme="true-dark"] .saved-jump b {
+  color: var(--theme-control-ink);
+  border-color: var(--theme-control-border);
+  background: var(--theme-control-bg);
+}
+:root[data-theme="dark"] .study-collapse:hover,
+:root[data-theme="dark"] .study-rail button:hover,
+:root[data-theme="dark"] .study-reference button:hover,
+:root[data-theme="dark"] .commentary-card-top button:hover,
+:root[data-theme="dark"] .commentary-source-tabs button:hover,
+:root[data-theme="dark"] .word-study-control button:hover,
+:root[data-theme="dark"] .lexicon-intro-row > button:hover,
+:root[data-theme="dark"] .saved-read-aloud:hover,
+:root[data-theme="dark"] .saved-jump b:hover,
+:root[data-theme="true-dark"] .study-collapse:hover,
+:root[data-theme="true-dark"] .study-rail button:hover,
+:root[data-theme="true-dark"] .study-reference button:hover,
+:root[data-theme="true-dark"] .commentary-card-top button:hover,
+:root[data-theme="true-dark"] .commentary-source-tabs button:hover,
+:root[data-theme="true-dark"] .word-study-control button:hover,
+:root[data-theme="true-dark"] .lexicon-intro-row > button:hover,
+:root[data-theme="true-dark"] .saved-read-aloud:hover,
+:root[data-theme="true-dark"] .saved-jump b:hover {
+  border-color: var(--sage);
+  background: var(--theme-control-hover-bg);
+}
+:root[data-theme="dark"] .study-collapse,
+:root[data-theme="dark"] .study-rail button,
+:root[data-theme="dark"] .commentary-card-top button,
+:root[data-theme="dark"] .commentary-source-tabs button,
+:root[data-theme="dark"] .word-study-control button,
+:root[data-theme="dark"] .lexicon-intro-row > button,
+:root[data-theme="dark"] .saved-read-aloud,
+:root[data-theme="dark"] .saved-jump b,
+:root[data-theme="true-dark"] .study-collapse,
+:root[data-theme="true-dark"] .study-rail button,
+:root[data-theme="true-dark"] .commentary-card-top button,
+:root[data-theme="true-dark"] .commentary-source-tabs button,
+:root[data-theme="true-dark"] .word-study-control button,
+:root[data-theme="true-dark"] .lexicon-intro-row > button,
+:root[data-theme="true-dark"] .saved-read-aloud,
+:root[data-theme="true-dark"] .saved-jump b {
+  box-shadow: var(--theme-control-shadow);
+}
+:root[data-theme="dark"] .study-rail button i,
+:root[data-theme="true-dark"] .study-rail button i { background: var(--theme-control-tip-bg); color: var(--theme-control-tip-ink); }
+:root[data-theme="dark"] .study-rail button span,
+:root[data-theme="true-dark"] .study-rail button span { color: var(--theme-control-ink); }
+:root[data-theme="dark"] .study-tabs button,
+:root[data-theme="true-dark"] .study-tabs button { color: #96a69e; }
+:root[data-theme="dark"] .study-tabs button.active,
+:root[data-theme="true-dark"] .study-tabs button.active { color: #dff0e6; }
+:root[data-theme="dark"] .study-tabs button.active::after,
+:root[data-theme="true-dark"] .study-tabs button.active::after { background: #9ac1af; }
+:root[data-theme="dark"] .study-reference span,
+:root[data-theme="true-dark"] .study-reference span { color: #e8eee9; }
+:root[data-theme="dark"] .study-reference small,
+:root[data-theme="true-dark"] .study-reference small { color: #a9b5ae; }
 :root[data-theme="dark"] .saved-tabs button.active,
 :root[data-theme="dark"] .commentary-source-tabs button.active { color: var(--sage); background: #29322b; }
 :root[data-theme="dark"] .passage-picker,
@@ -497,6 +592,79 @@ button, select { cursor: pointer; }
 :root[data-theme="dark"] .saved-library-button,
 :root[data-theme="dark"] .passage-menu,
 :root[data-theme="dark"] .chapter-dropdown { border-color: var(--line); background: var(--white); }
+
+:root[data-theme="true-dark"] .topbar,
+:root[data-theme="true-dark"] .saved-library-heading,
+:root[data-theme="true-dark"] .settings-window-heading,
+:root[data-theme="true-dark"] .chapter-dropdown-heading,
+:root[data-theme="true-dark"] .passage-menu-heading { background: rgba(14,18,22,.96); }
+:root[data-theme="true-dark"] .saved-library,
+:root[data-theme="true-dark"] .settings-window { background: linear-gradient(180deg, rgba(8,10,13,.99), var(--paper)); }
+:root[data-theme="true-dark"] .saved-library::before,
+:root[data-theme="true-dark"] .settings-window::before { background: radial-gradient(circle at top right, rgba(50,60,72,.34), transparent 36%); }
+:root[data-theme="true-dark"] .settings-card,
+:root[data-theme="true-dark"] .saved-bookmark-card,
+:root[data-theme="true-dark"] .saved-section,
+:root[data-theme="true-dark"] .saved-section-top,
+:root[data-theme="true-dark"] .saved-group > button { border-color: var(--line); background: rgba(20,24,30,.92); box-shadow: 0 8px 24px rgba(0,0,0,.22); }
+:root[data-theme="true-dark"] .settings-card-muted,
+:root[data-theme="true-dark"] .saved-tabs,
+:root[data-theme="true-dark"] .settings-window-heading > button,
+:root[data-theme="true-dark"] .saved-library-heading > button { background: #1b2027; }
+:root[data-theme="true-dark"] .settings-card select,
+:root[data-theme="true-dark"] .inline-note-editor textarea,
+:root[data-theme="true-dark"] .notes-card textarea { color: var(--ink); border-color: var(--line); background: #0f1318; }
+:root[data-theme="true-dark"] .reader { background: var(--white); }
+:root[data-theme="true-dark"] .study-panel { background: #0f1216; }
+:root[data-theme="true-dark"] .verse-row p { color: #e5eaee; }
+:root[data-theme="true-dark"] .verse-row:hover,
+:root[data-theme="true-dark"] .verse-row.selected { background: #1b2128; }
+:root[data-theme="true-dark"] .verse-row.note-target { background: #212932; }
+:root[data-theme="true-dark"] .verse-row.reading,
+:root[data-theme="true-dark"] .verse-row.reading.batch-selected { color: #f2f6fb; background: #25303a; }
+:root[data-theme="true-dark"] .verse-row.reading p,
+:root[data-theme="true-dark"] .verse-word.word-selected { color: #f2f6fb; }
+:root[data-theme="true-dark"] .verse-word.word-selected { background: #2b3742; box-shadow: 0 0 0 2px #2b3742; }
+:root[data-theme="true-dark"] .verse-row.batch-selected:not(.reading) { background: linear-gradient(90deg, rgba(35,42,50,.56), rgba(14,18,22,.18)); }
+:root[data-theme="true-dark"] .verse-actions button,
+:root[data-theme="true-dark"] .chapter-navigation button,
+:root[data-theme="true-dark"] .clear-highlight,
+:root[data-theme="true-dark"] .word-study-control button,
+:root[data-theme="true-dark"] .verse-action-menu .remove-color { color: var(--ink); background: #202833; }
+:root[data-theme="true-dark"] .inline-note-editor,
+:root[data-theme="true-dark"] .verse-action-menu,
+:root[data-theme="true-dark"] .commentary-card,
+:root[data-theme="true-dark"] .notes-card,
+:root[data-theme="true-dark"] .lexicon-card,
+:root[data-theme="true-dark"] .highlight-toolbar { border-color: var(--line); background: var(--white); box-shadow: 0 10px 28px rgba(0,0,0,.22); }
+:root[data-theme="true-dark"] .commentary-card p,
+:root[data-theme="true-dark"] .word-lookup-card p,
+:root[data-theme="true-dark"] .historical-source-note,
+:root[data-theme="true-dark"] .commentary-media-plan strong,
+:root[data-theme="true-dark"] .chapter-commentary-list strong,
+:root[data-theme="true-dark"] .word-study-control strong { color: #ced5dd; }
+:root[data-theme="true-dark"] .commentary-card p .commentary-spoken-word { color: #f2f6fb; background: #2d3944; box-shadow: 0 0 0 2px #2d3944; }
+:root[data-theme="true-dark"] .commentary-source-tabs,
+:root[data-theme="true-dark"] .commentary-state,
+:root[data-theme="true-dark"] .word-study-control,
+:root[data-theme="true-dark"] .lexicon-empty-state { background: rgba(24,30,36,.74); }
+:root[data-theme="true-dark"] .historical-commentary-card { border-color: #414958; background: linear-gradient(180deg, #1a1f26 0%, var(--white) 42%); }
+:root[data-theme="true-dark"] .historical-badge { color: #d7c79c; border-color: #584c35; background: #2d271d; }
+:root[data-theme="true-dark"] .historical-source-note { background: #191e24; }
+:root[data-theme="true-dark"] .chapter-grid button { color: var(--ink); background: var(--white); }
+:root[data-theme="true-dark"] .chapter-grid button.selected { color: #eef4fa; border-color: #4d5a67; background: #2a3540; }
+:root[data-theme="true-dark"] .book-grid button:hover { background: #1f252d; }
+:root[data-theme="true-dark"] .bookmark-glyph::after,
+:root[data-theme="true-dark"] .book-title-line button { background: var(--white); }
+:root[data-theme="true-dark"] .book-title-line button:hover .bookmark-glyph::after { background: var(--gold-soft); }
+:root[data-theme="true-dark"] .saved-tabs button.active,
+:root[data-theme="true-dark"] .commentary-source-tabs button.active { color: var(--sage); background: #232c33; }
+:root[data-theme="true-dark"] .passage-picker,
+:root[data-theme="true-dark"] .translation-badge,
+:root[data-theme="true-dark"] .settings-cog-button,
+:root[data-theme="true-dark"] .saved-library-button,
+:root[data-theme="true-dark"] .passage-menu,
+:root[data-theme="true-dark"] .chapter-dropdown { border-color: var(--line); background: var(--white); }
 
 @media (max-width: 1050px) {
   .workspace { grid-template-columns: minmax(0, 1fr) 330px; }

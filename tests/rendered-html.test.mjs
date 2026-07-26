@@ -136,6 +136,8 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /settings-window/);
   assert.match(page, /selah-theme/);
   assert.match(page, /themePreference/);
+  assert.match(page, /Green dark/);
+  assert.match(page, /True dark/);
   assert.match(page, /selah-read-original-definition/);
   assert.match(page, /new SpeechSynthesisUtterance\(entry\.meaning\)/);
   assert.doesNotMatch(page, /Definition\. \$\{entry\.meaning\}/);
@@ -161,5 +163,6 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /id === sorted\[0\] - 1/);
   assert.doesNotMatch(page, /bible-api\.com/);
   assert.match(styles, /:root\[data-theme="dark"\]/);
+  assert.match(styles, /:root\[data-theme="true-dark"\]/);
   assert.match(styles, /\.study-panel \{ position: sticky; top: 72px;/);
 });

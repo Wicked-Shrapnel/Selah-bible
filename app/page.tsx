@@ -8,7 +8,7 @@ type Picker = "books" | "chapters" | null;
 type StudyTab = "commentary" | "lexicon" | "notes";
 type CommentaryView = "expository" | "historical";
 type HighlightColor = "gold" | "sage" | "blue" | "rose";
-type ThemePreference = "system" | "light" | "dark";
+type ThemePreference = "system" | "light" | "dark" | "true-dark";
 type LexiconEntry = { word: string; transliteration: string; pronunciation: string; spoken: string; number: string; meaning: string; lang: "he-IL" | "el-GR" };
 type OriginalWordToken = { text: string; strongs?: string[] };
 type OriginalLanguageBook = { source: string; verses: Record<string, OriginalWordToken[]> };
@@ -275,7 +275,7 @@ export default function Home() {
       if (savedNotes) setNotes(JSON.parse(savedNotes));
       if (savedHighlightColor && ["gold", "sage", "blue", "rose"].includes(savedHighlightColor)) setPreferredHighlightColor(savedHighlightColor);
       if (savedDockCollapsed === "true") setAudioDockCollapsed(true);
-      if (savedTheme && ["system", "light", "dark"].includes(savedTheme)) setThemePreference(savedTheme);
+      if (savedTheme && ["system", "light", "dark", "true-dark"].includes(savedTheme)) setThemePreference(savedTheme);
       if (savedOriginalDefinition === "true") setReadOriginalDefinition(true);
       if (savedPlace) {
         const parsed = JSON.parse(savedPlace) as SavedPlace;
@@ -1131,7 +1131,8 @@ export default function Home() {
                   }}>
                     <option value="system">Follow device</option>
                     <option value="light">Light</option>
-                    <option value="dark">Dark</option>
+                    <option value="dark">Green dark</option>
+                    <option value="true-dark">True dark</option>
                   </select>
                 </label>
               </div>
