@@ -144,6 +144,8 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /visibleVoices/);
   assert.match(page, /readingSession/);
   assert.match(page, /toggleCommentaryReading/);
+  assert.match(page, /studyPanelRef/);
+  assert.match(page, /panel\.scrollTo\(\{ top: Math\.max\(0, targetTop\), behavior: "smooth" \}\)/);
   assert.match(page, /Read commentary aloud/);
   assert.match(page, /Add section note/);
   assert.match(page, /audioDockCollapsed/);

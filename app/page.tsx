@@ -223,6 +223,7 @@ export default function Home() {
   const activeAudio = useRef<HTMLAudioElement | null>(null);
   const passagePickerRef = useRef<HTMLDivElement | null>(null);
   const savedPanelRef = useRef<HTMLDivElement | null>(null);
+  const studyPanelRef = useRef<HTMLElement | null>(null);
   const pendingSavedVerse = useRef<number | null>(null);
   const bibleBookCache = useRef<Record<string, BibleSourceBook>>({});
   const originalLanguageBookCache = useRef<Record<string, OriginalLanguageBook>>({});
@@ -885,6 +886,22 @@ export default function Home() {
     if (fallbackName) localStorage.setItem("selah-voice", fallbackName);
   }, [enabledVoiceNames.length, enabledVoiceSet, sortedVoices, visibleVoices, voiceName]);
   const commentaryTokens = useMemo(() => activeCommentaryEntry?.text.split(/(\s+)/) || [], [activeCommentaryEntry]);
+
+  useEffect(() => {
+    if (!isReadingCommentary || isCommentaryPaused || commentaryView !== "expository" || commentaryWordIndex === null) return;
+    const panel = studyPanelRef.current;
+    if (!panel) return;
+    const spokenWord = panel.querySelector(".commentary-spoken-word") as HTMLElement | null;
+    if (!spokenWord) return;
+    const panelRect = panel.getBoundingClientRect();
+    const wordRect = spokenWord.getBoundingClientRect();
+    const visibleTop = panelRect.top + 96;
+    const visibleBottom = panelRect.bottom - 160;
+    if (wordRect.top >= visibleTop && wordRect.bottom <= visibleBottom) return;
+    const targetTop = panel.scrollTop + (wordRect.top - panelRect.top) - panel.clientHeight * 0.36;
+    panel.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+  }, [commentaryWordIndex, commentaryView, isCommentaryPaused, isReadingCommentary]);
+
   const historicalCommentaryUrl = `https://biblehub.com/commentaries/cambridge/${bibleHubBookSlug(selectedBook.name)}/${chapter}.htm`;
   const chapterNotes = verses.filter((verse) => Boolean(notes[verseKey(verse.id)]));
   const selectedSectionIds = [...selectedForHighlight].sort((a, b) => a - b);
@@ -1387,7 +1404,7 @@ export default function Home() {
           </div>
         </article>
 
-        <aside className={`study-panel ${mobileStudyOpen ? "mobile-open" : ""}`} aria-label="Study tools">
+        <aside ref={studyPanelRef} className={`study-panel ${mobileStudyOpen ? "mobile-open" : ""}`} aria-label="Study tools">
           <button className="study-collapse" onClick={() => setStudyCollapsed(!studyCollapsed)} aria-label={studyCollapsed ? "Open study panel" : "Collapse study panel"}>{studyCollapsed ? "‹" : "›"}</button>
           {studyCollapsed ? (
             <div className="study-rail">
