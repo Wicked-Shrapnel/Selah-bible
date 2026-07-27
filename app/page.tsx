@@ -36,7 +36,7 @@ type SavedTextCache = Record<string, Record<number, string>>;
 type BibleSourceVerse = { verse: string; text: string };
 type BibleSourceChapter = { chapter: string; verses: BibleSourceVerse[] };
 type BibleSourceBook = { book: string; chapters: BibleSourceChapter[] };
-type BibleSearchResult = { book: Book; chapter: number; verse: number; reference: string; text: string; rank: number };
+type BibleSearchResult = { book: Book; chapter: number; verse: number; reference: string; text: string; rank: number; kind: "match" | "suggestion" };
 
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const MIN_STUDY_PANEL_WIDTH = 380;
@@ -152,6 +152,11 @@ const searchStopWords = new Set([
 
 function searchTerms(text: string) {
   return normalizeSearchText(text).split(" ").filter(Boolean);
+}
+
+function searchHighlightTerms(query: string) {
+  const terms = searchTerms(query).filter((word) => word.length > 1 && !searchStopWords.has(word));
+  return terms.length ? terms : searchTerms(query).filter((word) => word.length > 1);
 }
 
 function savedTextCacheKey(book: string, chapterNumber: number) {
@@ -410,10 +415,11 @@ export default function Home() {
     const closeMenusOnOutsideClick = (event: PointerEvent) => {
       const target = event.target as Node;
       if (picker === "chapters" && !passagePickerRef.current?.contains(target)) setPicker(null);
+      if (searchExpanded && !passagePickerRef.current?.contains(target)) setSearchExpanded(false);
     };
     document.addEventListener("pointerdown", closeMenusOnOutsideClick);
     return () => document.removeEventListener("pointerdown", closeMenusOnOutsideClick);
-  }, [picker]);
+  }, [picker, searchExpanded]);
 
   useEffect(() => {
     if (!("speechSynthesis" in window)) return;
@@ -1157,6 +1163,8 @@ export default function Home() {
     try {
       const loadedBooks = await Promise.all(books.map(async (book) => ({ book, source: await loadBibleBook(book.name) })));
       const matches: BibleSearchResult[] = [];
+      const suggestions: BibleSearchResult[] = [];
+      const suggestionThreshold = queryWords.length > 2 ? Math.ceil(queryWords.length * 0.6) : 2;
       for (const { book, source } of loadedBooks) {
         source.chapters.forEach((sourceChapter) => {
           const chapterNumber = Number(sourceChapter.chapter);
@@ -1165,20 +1173,36 @@ export default function Home() {
             const verseWords = new Set(searchTerms(verse.text));
             const exactPhrase = normalizedVerse.includes(normalizedQuery);
             const allWords = queryWords.every((word) => verseWords.has(word));
-            if (!exactPhrase && !allWords) return;
             const matchedWordCount = queryWords.filter((word) => verseWords.has(word)).length;
-            matches.push({
+            const baseResult = {
               book,
               chapter: chapterNumber,
               verse: Number(verse.verse),
               reference: `${book.name} ${chapterNumber}:${verse.verse}`,
               text: verse.text.trim(),
-              rank: exactPhrase ? 0 : Math.max(1, 20 - matchedWordCount),
-            });
+            };
+            if (exactPhrase || allWords) {
+              matches.push({
+                ...baseResult,
+                kind: "match",
+                rank: exactPhrase ? 0 : Math.max(1, 20 - matchedWordCount),
+              });
+              return;
+            }
+            if (queryWords.length > 1 && matchedWordCount >= suggestionThreshold) {
+              suggestions.push({
+                ...baseResult,
+                kind: "suggestion",
+                rank: 100 + Math.max(1, 20 - matchedWordCount),
+              });
+            }
           });
         });
       }
-      setSearchResults(matches.sort((a, b) => a.rank - b.rank || books.indexOf(a.book) - books.indexOf(b.book) || a.chapter - b.chapter || a.verse - b.verse).slice(0, 150));
+      const sortResults = (a: BibleSearchResult, b: BibleSearchResult) => a.rank - b.rank || books.indexOf(a.book) - books.indexOf(b.book) || a.chapter - b.chapter || a.verse - b.verse;
+      const primaryMatches = matches.sort(sortResults).slice(0, 120);
+      const relatedSuggestions = suggestions.sort(sortResults).slice(0, primaryMatches.length ? 12 : 30);
+      setSearchResults([...primaryMatches, ...relatedSuggestions]);
       setSearchStatus("ready");
     } catch {
       setSearchStatus("error");
@@ -1195,6 +1219,26 @@ export default function Home() {
       setSelectedVerse(result.verse);
       document.getElementById(`verse-${result.verse}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+  };
+
+  const renderSearchVerseText = (result: BibleSearchResult) => {
+    const highlightTerms = new Set(searchHighlightTerms(searchQuery));
+    const redLetterText = redLetterMap[result.reference]?.trim() || "";
+    const redStart = redLetterText ? result.text.indexOf(redLetterText) : -1;
+    const redEnd = redStart >= 0 ? redStart + redLetterText.length : -1;
+    let offset = 0;
+
+    return result.text.split(/(\s+)/).map((token, index) => {
+      const start = offset;
+      offset += token.length;
+      if (/^\s+$/.test(token)) return token;
+      const normalizedToken = normalizeSearchText(token);
+      const isHighlighted = normalizedToken.length > 1 && highlightTerms.has(normalizedToken);
+      const isRedLetter = redStart >= 0 && start >= redStart && start < redEnd;
+      const className = isRedLetter ? "search-red-letter" : undefined;
+      if (isHighlighted) return <mark key={`${result.reference}-${index}`} className={className}>{token}</mark>;
+      return <span key={`${result.reference}-${index}`} className={className}>{token}</span>;
+    });
   };
 
   const openBookmarkedChapter = () => {
@@ -1303,8 +1347,7 @@ export default function Home() {
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search Bible..."
                 />
-                <button type="submit" aria-label="Search Bible" title="Search Bible"><span className="search-glyph" aria-hidden="true" /></button>
-                <button type="button" aria-label="Close Bible search" title="Close search" onClick={() => { setSearchExpanded(false); setSearchQuery(""); }}>&times;</button>
+                <button type="button" aria-label="Close Bible search" title="Close search" onClick={() => setSearchExpanded(false)}><span className="search-glyph" aria-hidden="true" /></button>
               </>
             ) : (
               <button type="button" onClick={() => { setPicker(null); setSearchExpanded(true); }} aria-label="Open Bible search" title="Search Bible"><span className="search-glyph" aria-hidden="true" /></button>
@@ -1507,25 +1550,26 @@ export default function Home() {
             </form>
             <div className="search-results-summary">
               {searchStatus === "searching" && "Searching the local Bible text..."}
-              {searchStatus === "ready" && `${searchResults.length} ${searchResults.length === 1 ? "verse" : "verses"} found`}
+              {searchStatus === "ready" && (() => {
+                const matchCount = searchResults.filter((result) => result.kind === "match").length;
+                const suggestionCount = searchResults.filter((result) => result.kind === "suggestion").length;
+                if (suggestionCount) return `${matchCount} likely ${matchCount === 1 ? "match" : "matches"} + ${suggestionCount} related ${suggestionCount === 1 ? "suggestion" : "suggestions"}`;
+                return `${matchCount} ${matchCount === 1 ? "verse" : "verses"} found`;
+              })()}
               {searchStatus === "error" && "Search is unavailable right now."}
             </div>
             <div className="search-results-list">
               {searchStatus === "ready" && searchResults.length === 0 && <p>No verses found. Try a shorter word or phrase.</p>}
-              {searchResults.map((result) => {
-                const excerpt = searchExcerptParts(result.text, searchQuery);
-                return (
-                  <button key={`${result.reference}-${result.rank}`} onClick={() => openSearchResult(result)}>
+              {searchResults.map((result) => (
+                  <button key={`${result.reference}-${result.rank}-${result.kind}`} className={result.kind === "suggestion" ? "search-suggestion" : ""} onClick={() => openSearchResult(result)}>
                     <strong>{result.reference}</strong>
-                    <span>
-                      {excerpt.before}
-                      {excerpt.match && <mark>{excerpt.match}</mark>}
-                      {excerpt.after}
+                    <span className="search-result-text">
+                      {renderSearchVerseText(result)}
+                      {result.kind === "suggestion" && <em>Related suggestion</em>}
                     </span>
                     <b>Jump</b>
                   </button>
-                );
-              })}
+              ))}
             </div>
           </div>
         </section>

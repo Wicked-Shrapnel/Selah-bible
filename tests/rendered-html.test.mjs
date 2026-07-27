@@ -114,6 +114,9 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /searchResults/);
   assert.match(page, /search-library/);
   assert.match(page, /openSearchResult/);
+  assert.match(page, /renderSearchVerseText/);
+  assert.match(page, /searchHighlightTerms/);
+  assert.match(page, /kind: "suggestion"/);
   assert.match(page, /normalizeSearchText/);
   assert.match(page, /selah-reading-place-v1/);
   assert.match(page, /setPicker\("chapters"\)/);
@@ -193,5 +196,8 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(styles, /speed-control/);
   assert.match(styles, /bible-search-control/);
   assert.match(styles, /search-results-list/);
+  assert.match(styles, /search-result-text/);
+  assert.match(styles, /search-red-letter/);
+  assert.match(styles, /search-suggestion/);
   assert.match(styles, /\.study-panel \{ position: sticky; top: 72px;/);
 });
