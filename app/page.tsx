@@ -11,6 +11,7 @@ type CommentaryView = "expository" | "historical";
 type HighlightColor = "gold" | "sage" | "blue" | "rose";
 type ThemePreference = "system" | "light" | "dark" | "true-dark";
 type AudioSourcePreference = "auto" | "official" | "david";
+type SearchLayoutPreference = "list" | "spread";
 type LexiconEntry = { word: string; transliteration: string; pronunciation: string; spoken: string; number: string; meaning: string; lang: "he-IL" | "el-GR" };
 type OriginalWordToken = { text: string; strongs?: string[] };
 type OriginalLanguageBook = { source: string; verses: Record<string, OriginalWordToken[]> };
@@ -254,6 +255,7 @@ export default function Home() {
   const [audioDockCollapsed, setAudioDockCollapsed] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
   const [audioSourcePreference, setAudioSourcePreference] = useState<AudioSourcePreference>("auto");
+  const [searchLayoutPreference, setSearchLayoutPreference] = useState<SearchLayoutPreference>("list");
   const [studyPanelWidth, setStudyPanelWidth] = useState(MIN_STUDY_PANEL_WIDTH);
   const [isResizingStudy, setIsResizingStudy] = useState(false);
   const [readOriginalDefinition, setReadOriginalDefinition] = useState(false);
@@ -334,6 +336,7 @@ export default function Home() {
       const savedDockCollapsed = localStorage.getItem("selah-audio-dock-collapsed");
       const savedTheme = localStorage.getItem("selah-theme") as ThemePreference | null;
       const savedAudioSource = localStorage.getItem("selah-audio-source") as AudioSourcePreference | null;
+      const savedSearchLayout = localStorage.getItem("selah-search-layout") as SearchLayoutPreference | null;
       const savedOriginalDefinition = localStorage.getItem("selah-read-original-definition");
       const savedStudyPanelWidth = Number(localStorage.getItem(STUDY_PANEL_WIDTH_STORAGE_KEY));
       if (savedHighlights) {
@@ -347,6 +350,7 @@ export default function Home() {
       if (savedAudioSource && ["auto", "official", "david"].includes(savedAudioSource)) {
         setAudioSourcePreference(savedAudioSource === "official" && !OFFICIAL_AUDIO_ENABLED ? "david" : savedAudioSource);
       }
+      if (savedSearchLayout && ["list", "spread"].includes(savedSearchLayout)) setSearchLayoutPreference(savedSearchLayout);
       if (savedOriginalDefinition === "true") setReadOriginalDefinition(true);
       if (Number.isFinite(savedStudyPanelWidth)) setStudyPanelWidth(clampNumber(savedStudyPanelWidth, MIN_STUDY_PANEL_WIDTH, MAX_STUDY_PANEL_WIDTH));
       if (savedPlace) {
@@ -1450,6 +1454,18 @@ export default function Home() {
                     <option value="true-dark">True dark</option>
                   </select>
                 </label>
+                <label>
+                  <span>Search view</span>
+                  <select value={searchLayoutPreference} onChange={(event) => {
+                    const nextLayout = event.target.value as SearchLayoutPreference;
+                    setSearchLayoutPreference(nextLayout);
+                    localStorage.setItem("selah-search-layout", nextLayout);
+                  }}>
+                    <option value="list">List</option>
+                    <option value="spread">Bible spread</option>
+                  </select>
+                </label>
+                <p className="settings-help">Bible spread lays search results out like facing pages on larger screens, while keeping a single readable column on mobile.</p>
               </div>
               <div className="settings-card">
                 <div className="settings-card-heading">
@@ -1571,7 +1587,7 @@ export default function Home() {
               })()}
               {searchStatus === "error" && "Search is unavailable right now."}
             </div>
-            <div className="search-results-list">
+            <div className={`search-results-list ${searchLayoutPreference === "spread" ? "spread-layout" : "list-layout"}`}>
               {searchStatus === "ready" && searchResults.length === 0 && <p>No verses found. Try a shorter word or phrase.</p>}
               {searchResults.map((result) => (
                 <div

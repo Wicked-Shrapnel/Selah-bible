@@ -145,6 +145,8 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /davidVoice/);
   assert.match(page, /selah-audio-source/);
   assert.match(page, /audioSourcePreference/);
+  assert.match(page, /selah-search-layout/);
+  assert.match(page, /searchLayoutPreference/);
   assert.match(page, /Automatic - David only for now/);
   assert.match(page, /Microsoft David/);
   assert.match(page, /disabled right now/);
@@ -154,6 +156,7 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /settings-window/);
   assert.match(page, /selah-theme/);
   assert.match(page, /themePreference/);
+  assert.match(page, /Bible spread/);
   assert.match(page, /Green dark/);
   assert.match(page, /True dark/);
   assert.match(page, /selah-study-panel-width-v1/);
@@ -197,6 +200,7 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(styles, /speed-control/);
   assert.match(styles, /bible-search-control/);
   assert.match(styles, /search-results-list/);
+  assert.match(styles, /spread-layout/);
   assert.match(styles, /search-result-card/);
   assert.match(styles, /search-result-text/);
   assert.match(styles, /search-read-aloud/);
