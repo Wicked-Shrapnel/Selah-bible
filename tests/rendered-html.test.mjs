@@ -134,8 +134,9 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /davidVoice/);
   assert.match(page, /selah-audio-source/);
   assert.match(page, /audioSourcePreference/);
-  assert.match(page, /Automatic - official audio first/);
+  assert.match(page, /Automatic - David only for now/);
   assert.match(page, /Microsoft David/);
+  assert.match(page, /disabled right now/);
   assert.doesNotMatch(page, /selah-enabled-voices/);
   assert.doesNotMatch(page, /toggleVoiceVisibility/);
   assert.doesNotMatch(page, /voice-picker-panel/);

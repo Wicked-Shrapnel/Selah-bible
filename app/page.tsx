@@ -40,6 +40,7 @@ type BibleSourceBook = { book: string; chapters: BibleSourceChapter[] };
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const MIN_STUDY_PANEL_WIDTH = 380;
 const MAX_STUDY_PANEL_WIDTH = 680;
+const OFFICIAL_AUDIO_ENABLED = false;
 
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -243,7 +244,7 @@ export default function Home() {
   const chapterAudioPrefix = chapterAudioBase(selectedBook.name, chapter);
   const chapterMp3Url = chapterAudioFiles[chapterAudioKey] || chapterMp3AudioPath(selectedBook.name, chapter);
   const hasChapterMp3Audio = Boolean(chapterAudioFiles[chapterAudioKey]);
-  const shouldUseChapterMp3Audio = hasChapterMp3Audio && audioSourcePreference !== "david";
+  const shouldUseChapterMp3Audio = OFFICIAL_AUDIO_ENABLED && hasChapterMp3Audio && audioSourcePreference !== "david";
   const selected = verses.find((verse) => verse.id === selectedVerse) || verses[0];
   const chapterAudioProgress = useMemo(() => {
     const counts = verses.map((verse) => verseWordCount(verse.text));
@@ -297,7 +298,9 @@ export default function Home() {
       if (savedHighlightColor && ["gold", "sage", "blue", "rose"].includes(savedHighlightColor)) setPreferredHighlightColor(savedHighlightColor);
       if (savedDockCollapsed === "true") setAudioDockCollapsed(true);
       if (savedTheme && ["system", "light", "dark", "true-dark"].includes(savedTheme)) setThemePreference(savedTheme);
-      if (savedAudioSource && ["auto", "official", "david"].includes(savedAudioSource)) setAudioSourcePreference(savedAudioSource);
+      if (savedAudioSource && ["auto", "official", "david"].includes(savedAudioSource)) {
+        setAudioSourcePreference(savedAudioSource === "official" && !OFFICIAL_AUDIO_ENABLED ? "david" : savedAudioSource);
+      }
       if (savedOriginalDefinition === "true") setReadOriginalDefinition(true);
       if (Number.isFinite(savedStudyPanelWidth)) setStudyPanelWidth(clampNumber(savedStudyPanelWidth, MIN_STUDY_PANEL_WIDTH, MAX_STUDY_PANEL_WIDTH));
       if (savedPlace) {
@@ -1219,15 +1222,15 @@ export default function Home() {
                   setAudioSourcePreference(nextSource);
                   localStorage.setItem("selah-audio-source", nextSource);
                 }}>
-                  <option value="auto">Automatic - official audio first</option>
-                  <option value="official">Official audio Bible</option>
+                  <option value="auto">Automatic - David only for now</option>
+                  <option value="official" disabled>Official audio Bible - disabled right now</option>
                   <option value="david">Microsoft David</option>
                 </select>
               </label>
               <div className="audio-source-summary">
                 <span>Primary</span>
-                <strong>{shouldUseChapterMp3Audio ? "Official audio Bible" : audioSourcePreference === "david" ? "Microsoft David selected" : "Official audio Bible unavailable"}</strong>
-                <p>{shouldUseChapterMp3Audio ? "Selah will play the imported KJV chapter MP3 for this chapter." : audioSourcePreference === "david" ? "Selah will use David even when an official chapter recording is available." : "Add the local audio files to use the official KJV chapter recording here."}</p>
+                <strong>{shouldUseChapterMp3Audio ? "Official audio Bible" : audioSourcePreference === "david" ? "Microsoft David selected" : "Official audio Bible disabled right now"}</strong>
+                <p>{shouldUseChapterMp3Audio ? "Selah will play the imported KJV chapter MP3 for this chapter." : audioSourcePreference === "david" ? "Selah will use David for read aloud." : "The official chapter recordings are kept local for now and are not active in the app."}</p>
               </div>
               <div className="audio-source-summary">
                 <span>Fallback</span>
@@ -1275,9 +1278,9 @@ export default function Home() {
               <div className="settings-card settings-card-muted">
                 <div className="settings-card-heading">
                   <span>OFFICIAL AUDIO BIBLE</span>
-                  <strong>{hasChapterMp3Audio ? "Ready for this chapter" : "Local audio not found"}</strong>
+                  <strong>{OFFICIAL_AUDIO_ENABLED && hasChapterMp3Audio ? "Ready for this chapter" : "Disabled right now"}</strong>
                 </div>
-                <p>No API key is required. Selah uses imported KJV chapter MP3s first, then falls back to Microsoft David when a chapter recording is not available.</p>
+                <p>No API key is required. The official audio files stay local for now, and Selah uses Microsoft David in the app until we turn the chapter recordings back on.</p>
               </div>
             </div>
           </div>
