@@ -144,6 +144,16 @@ function normalizeSearchText(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+const searchStopWords = new Set([
+  "a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "from", "he", "her", "his", "i", "in", "into",
+  "is", "it", "me", "my", "of", "on", "or", "our", "she", "that", "the", "their", "them", "there", "they", "this",
+  "to", "unto", "was", "we", "were", "what", "when", "which", "who", "with", "ye", "you", "your",
+]);
+
+function searchTerms(text: string) {
+  return normalizeSearchText(text).split(" ").filter(Boolean);
+}
+
 function savedTextCacheKey(book: string, chapterNumber: number) {
   return `${bookSlug(book)}-${chapterNumber}`;
 }
@@ -1127,7 +1137,9 @@ export default function Home() {
   const searchBible = async () => {
     const cleanQuery = searchQuery.trim();
     const normalizedQuery = normalizeSearchText(cleanQuery);
-    const queryWords = normalizedQuery.split(" ").filter((word) => word.length > 1);
+    const rawQueryWords = searchTerms(cleanQuery);
+    const significantQueryWords = rawQueryWords.filter((word) => word.length > 1 && !searchStopWords.has(word));
+    const queryWords = significantQueryWords.length ? significantQueryWords : rawQueryWords.filter((word) => word.length > 1);
     if (!queryWords.length) {
       setSearchResults([]);
       setSearchStatus("idle");
@@ -1150,16 +1162,18 @@ export default function Home() {
           const chapterNumber = Number(sourceChapter.chapter);
           sourceChapter.verses.forEach((verse) => {
             const normalizedVerse = normalizeSearchText(verse.text);
+            const verseWords = new Set(searchTerms(verse.text));
             const exactPhrase = normalizedVerse.includes(normalizedQuery);
-            const allWords = queryWords.every((word) => normalizedVerse.includes(word));
+            const allWords = queryWords.every((word) => verseWords.has(word));
             if (!exactPhrase && !allWords) return;
+            const matchedWordCount = queryWords.filter((word) => verseWords.has(word)).length;
             matches.push({
               book,
               chapter: chapterNumber,
               verse: Number(verse.verse),
               reference: `${book.name} ${chapterNumber}:${verse.verse}`,
               text: verse.text.trim(),
-              rank: exactPhrase ? 0 : 1,
+              rank: exactPhrase ? 0 : Math.max(1, 20 - matchedWordCount),
             });
           });
         });
@@ -1291,11 +1305,11 @@ export default function Home() {
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search Bible..."
                 />
-                <button type="submit" aria-label="Search Bible" title="Search Bible">&#128269;</button>
+                <button type="submit" aria-label="Search Bible" title="Search Bible"><span className="search-glyph" aria-hidden="true" /></button>
                 <button type="button" aria-label="Close Bible search" title="Close search" onClick={() => { setSearchExpanded(false); setSearchQuery(""); }}>&times;</button>
               </>
             ) : (
-              <button type="button" onClick={() => { setPicker(null); setSearchExpanded(true); }} aria-label="Open Bible search" title="Search Bible">&#128269;</button>
+              <button type="button" onClick={() => { setPicker(null); setSearchExpanded(true); }} aria-label="Open Bible search" title="Search Bible"><span className="search-glyph" aria-hidden="true" /></button>
             )}
           </form>
           {picker === "chapters" && (
