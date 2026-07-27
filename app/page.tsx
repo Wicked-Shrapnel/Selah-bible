@@ -36,6 +36,7 @@ type SavedTextCache = Record<string, Record<number, string>>;
 type BibleSourceVerse = { verse: string; text: string };
 type BibleSourceChapter = { chapter: string; verses: BibleSourceVerse[] };
 type BibleSourceBook = { book: string; chapters: BibleSourceChapter[] };
+type BibleSearchResult = { book: Book; chapter: number; verse: number; reference: string; text: string; rank: number };
 
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const MIN_STUDY_PANEL_WIDTH = 380;
@@ -139,6 +140,10 @@ function bibleFileName(name: string) {
   return `${name.replace(/\s+/g, "")}.json`;
 }
 
+function normalizeSearchText(text: string) {
+  return text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+
 function savedTextCacheKey(book: string, chapterNumber: number) {
   return `${bookSlug(book)}-${chapterNumber}`;
 }
@@ -167,6 +172,27 @@ function excerptText(text: string, maxLength = 190) {
   const trimmed = clean.slice(0, maxLength - 1);
   const lastSpace = trimmed.lastIndexOf(" ");
   return `${trimmed.slice(0, lastSpace > 80 ? lastSpace : trimmed.length).trim()}...`;
+}
+
+function searchExcerptParts(text: string, query: string, maxLength = 260) {
+  const clean = text.replace(/\s+/g, " ").trim();
+  const lower = clean.toLowerCase();
+  const queryTerms = [query.trim(), ...query.trim().split(/\s+/)].filter((term) => term.length > 1);
+  const matchTerm = queryTerms.find((term) => lower.includes(term.toLowerCase()));
+  if (!matchTerm) return { before: excerptText(clean, maxLength), match: "", after: "" };
+
+  const matchIndex = lower.indexOf(matchTerm.toLowerCase());
+  const windowStart = Math.max(0, matchIndex - Math.floor((maxLength - matchTerm.length) / 2));
+  const windowEnd = Math.min(clean.length, windowStart + maxLength);
+  const prefix = windowStart > 0 ? "..." : "";
+  const suffix = windowEnd < clean.length ? "..." : "";
+  const excerpt = `${prefix}${clean.slice(windowStart, windowEnd)}${suffix}`;
+  const adjustedIndex = matchIndex - windowStart + prefix.length;
+  return {
+    before: excerpt.slice(0, adjustedIndex),
+    match: excerpt.slice(adjustedIndex, adjustedIndex + matchTerm.length),
+    after: excerpt.slice(adjustedIndex + matchTerm.length),
+  };
 }
 
 function verseWordCount(text: string) {
@@ -221,6 +247,11 @@ export default function Home() {
   const [bookmark, setBookmark] = useState<SavedPlace | null>(null);
   const [savedPanelOpen, setSavedPanelOpen] = useState(false);
   const [savedViewTab, setSavedViewTab] = useState<"highlights" | "notes">("highlights");
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const [searchPanelOpen, setSearchPanelOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<BibleSearchResult[]>([]);
+  const [searchStatus, setSearchStatus] = useState<"idle" | "searching" | "ready" | "error">("idle");
   const [isReadingCommentary, setIsReadingCommentary] = useState(false);
   const [isCommentaryPaused, setIsCommentaryPaused] = useState(false);
   const [commentaryWordIndex, setCommentaryWordIndex] = useState<number | null>(null);
@@ -313,6 +344,18 @@ export default function Home() {
         }
       }
     });
+  }, []);
+
+  const loadBibleBook = useCallback(async (bookName: string) => {
+    const fileName = bibleFileName(bookName);
+    const cached = bibleBookCache.current[fileName];
+    if (cached) return cached;
+
+    const response = await fetch(`/bible/kjv/${fileName}`);
+    if (!response.ok) throw new Error("Bible file unavailable");
+    const sourceBook = await response.json() as BibleSourceBook;
+    bibleBookCache.current[fileName] = sourceBook;
+    return sourceBook;
   }, []);
 
   useEffect(() => {
@@ -1080,6 +1123,66 @@ export default function Home() {
       document.getElementById(`verse-${saved.verseIds[0]}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   };
+
+  const searchBible = async () => {
+    const cleanQuery = searchQuery.trim();
+    const normalizedQuery = normalizeSearchText(cleanQuery);
+    const queryWords = normalizedQuery.split(" ").filter((word) => word.length > 1);
+    if (!queryWords.length) {
+      setSearchResults([]);
+      setSearchStatus("idle");
+      setSearchPanelOpen(false);
+      return;
+    }
+
+    stopReading();
+    setPicker(null);
+    setSavedPanelOpen(false);
+    setAudioSettingsOpen(false);
+    setSearchPanelOpen(true);
+    setSearchStatus("searching");
+
+    try {
+      const loadedBooks = await Promise.all(books.map(async (book) => ({ book, source: await loadBibleBook(book.name) })));
+      const matches: BibleSearchResult[] = [];
+      for (const { book, source } of loadedBooks) {
+        source.chapters.forEach((sourceChapter) => {
+          const chapterNumber = Number(sourceChapter.chapter);
+          sourceChapter.verses.forEach((verse) => {
+            const normalizedVerse = normalizeSearchText(verse.text);
+            const exactPhrase = normalizedVerse.includes(normalizedQuery);
+            const allWords = queryWords.every((word) => normalizedVerse.includes(word));
+            if (!exactPhrase && !allWords) return;
+            matches.push({
+              book,
+              chapter: chapterNumber,
+              verse: Number(verse.verse),
+              reference: `${book.name} ${chapterNumber}:${verse.verse}`,
+              text: verse.text.trim(),
+              rank: exactPhrase ? 0 : 1,
+            });
+          });
+        });
+      }
+      setSearchResults(matches.sort((a, b) => a.rank - b.rank || books.indexOf(a.book) - books.indexOf(b.book) || a.chapter - b.chapter || a.verse - b.verse).slice(0, 150));
+      setSearchStatus("ready");
+    } catch {
+      setSearchStatus("error");
+    }
+  };
+
+  const openSearchResult = (result: BibleSearchResult) => {
+    pendingSavedVerse.current = result.verse;
+    setSelectedBook(result.book);
+    setChapter(result.chapter);
+    setSearchPanelOpen(false);
+    if (result.book.name === selectedBook.name && result.chapter === chapter) {
+      pendingSavedVerse.current = null;
+      setSelectedVerse(result.verse);
+      document.getElementById(`verse-${result.verse}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
   const openBookmarkedChapter = () => {
     if (!bookmark) return;
     const book = books.find((item) => item.name === bookmark.book);
@@ -1177,6 +1280,24 @@ export default function Home() {
             Chapter {chapter} <span>⌄</span>
           </button>
           <button className="chapter-arrow" onClick={() => goToAdjacentChapter(1)} aria-label="Next chapter">›</button>
+          <form className={`bible-search-control ${searchExpanded ? "expanded" : ""}`} onSubmit={(event) => { event.preventDefault(); void searchBible(); }}>
+            {searchExpanded ? (
+              <>
+                <label className="sr-only" htmlFor="bible-search-input">Search the Bible</label>
+                <input
+                  id="bible-search-input"
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search Bible..."
+                />
+                <button type="submit" aria-label="Search Bible" title="Search Bible">&#128269;</button>
+                <button type="button" aria-label="Close Bible search" title="Close search" onClick={() => { setSearchExpanded(false); setSearchQuery(""); }}>&times;</button>
+              </>
+            ) : (
+              <button type="button" onClick={() => { setPicker(null); setSearchExpanded(true); }} aria-label="Open Bible search" title="Search Bible">&#128269;</button>
+            )}
+          </form>
           {picker === "chapters" && (
             <section className="chapter-dropdown" aria-label={`Chapters in ${selectedBook.name}`}>
               <div className="chapter-dropdown-heading">
@@ -1347,6 +1468,49 @@ export default function Home() {
                   }) : <p>No saved notes yet.</p>}
                 </div>
               )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {searchPanelOpen && (
+        <section className="search-library" aria-modal="true" role="dialog" aria-label="Bible search results">
+          <div className="search-library-heading">
+            <div><span>BIBLE SEARCH</span><strong>{searchQuery.trim() ? `Results for "${searchQuery.trim()}"` : "Search the Bible"}</strong></div>
+            <button onClick={() => setSearchPanelOpen(false)} aria-label="Close Bible search">X</button>
+          </div>
+          <div className="search-library-body">
+            <form className="search-library-box" onSubmit={(event) => { event.preventDefault(); void searchBible(); }}>
+              <label className="sr-only" htmlFor="bible-search-window-input">Search Bible keywords</label>
+              <input
+                id="bible-search-window-input"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search words or a phrase..."
+              />
+              <button type="submit" disabled={searchStatus === "searching"}>{searchStatus === "searching" ? "Searching" : "Search"}</button>
+            </form>
+            <div className="search-results-summary">
+              {searchStatus === "searching" && "Searching the local Bible text..."}
+              {searchStatus === "ready" && `${searchResults.length} ${searchResults.length === 1 ? "verse" : "verses"} found`}
+              {searchStatus === "error" && "Search is unavailable right now."}
+            </div>
+            <div className="search-results-list">
+              {searchStatus === "ready" && searchResults.length === 0 && <p>No verses found. Try a shorter word or phrase.</p>}
+              {searchResults.map((result) => {
+                const excerpt = searchExcerptParts(result.text, searchQuery);
+                return (
+                  <button key={`${result.reference}-${result.rank}`} onClick={() => openSearchResult(result)}>
+                    <strong>{result.reference}</strong>
+                    <span>
+                      {excerpt.before}
+                      {excerpt.match && <mark>{excerpt.match}</mark>}
+                      {excerpt.after}
+                    </span>
+                    <b>Jump</b>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </section>

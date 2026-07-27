@@ -63,6 +63,12 @@ button, select { cursor: pointer; }
 .passage-picker .chapter-arrow:hover { background: var(--sage-soft); }
 .passage-picker button span { color: var(--muted); margin-left: 6px; }
 .passage-picker .divider { width: 1px; height: 20px; background: var(--line); }
+.bible-search-control { display: flex; align-items: center; width: 34px; height: 34px; margin-left: 3px; overflow: hidden; border-left: 1px solid var(--line); transition: width .2s ease; }
+.bible-search-control.expanded { width: min(250px, 34vw); gap: 4px; padding-left: 7px; }
+.bible-search-control input { width: 100%; min-width: 0; height: 28px; border: 0; outline: 0; color: var(--ink); background: transparent; font-size: 12px; }
+.bible-search-control input::placeholder { color: #aaa69c; }
+.bible-search-control button { width: 30px; min-width: 30px; height: 30px; display: grid; place-items: center; border-radius: 7px; color: var(--sage); font-size: 14px; line-height: 1; }
+.bible-search-control button:hover { color: white; background: var(--sage); }
 .header-actions { position: relative; justify-self: end; display: flex; align-items: center; gap: 9px; }
 .translation-badge { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--sage); background: var(--white); font-size: 11px; font-weight: 800; }
 .settings-cog-button { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #cbd7d0; border-radius: 50%; color: var(--sage); background: var(--white); font-size: 17px; line-height: 1; }
@@ -98,6 +104,28 @@ button, select { cursor: pointer; }
 .saved-library-window { display: flex; flex-direction: column; }
 .saved-library-window .saved-library-heading strong::before { content: "Saved"; }
 .saved-library-body { position: relative; z-index: 1; width: min(1040px, calc(100vw - 48px)); margin: 0 auto; padding: 36px 0 72px; }
+.search-library { position: fixed; z-index: 55; inset: 0; width: 100vw; overflow: auto; color: var(--ink); background: linear-gradient(180deg, rgba(255,254,251,.98), var(--paper)); }
+.search-library::before { content: ""; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(circle at top right, rgba(227,235,229,.82), transparent 34%); }
+.search-library-heading { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 24px max(24px, 7vw) 18px; border-bottom: 1px solid var(--line); background: rgba(255,254,251,.96); backdrop-filter: blur(12px); }
+.search-library-heading span, .search-library-heading strong { display: block; }
+.search-library-heading span { color: #a18d57; font-size: 8px; font-weight: 850; letter-spacing: .15em; }
+.search-library-heading strong { margin-top: 4px; font: 600 28px Georgia, serif; }
+.search-library-heading > button { width: 36px; height: 36px; border: 0; border-radius: 50%; color: var(--muted); background: #f0eee8; font-size: 18px; }
+.search-library-body { position: relative; z-index: 1; width: min(1040px, calc(100vw - 48px)); margin: 0 auto; padding: 32px 0 72px; }
+.search-library-box { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 12px; border: 1px solid #d9d4c8; border-radius: 8px; background: rgba(255,254,251,.9); box-shadow: 0 8px 24px rgba(48,43,32,.05); }
+.search-library-box input { min-width: 0; height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: var(--white); outline: 0; }
+.search-library-box button { height: 42px; padding: 0 15px; border: 1px solid #b9c9c0; border-radius: 7px; color: var(--sage); background: var(--sage-soft); font-size: 10px; font-weight: 850; text-transform: uppercase; }
+.search-library-box button:disabled { opacity: .62; cursor: wait; }
+.search-results-summary { min-height: 32px; padding: 12px 4px 0; color: var(--muted); font: italic 12px Georgia, serif; }
+.search-results-list { margin-top: 10px; border: 1px solid #d9d4c8; border-radius: 8px; overflow: hidden; background: rgba(255,254,251,.88); box-shadow: 0 8px 24px rgba(48,43,32,.05); }
+.search-results-list button { width: 100%; display: grid; grid-template-columns: 135px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 15px 18px; border: 0; border-bottom: 1px solid var(--line); color: var(--ink); background: transparent; text-align: left; }
+.search-results-list button:last-child { border-bottom: 0; }
+.search-results-list button:hover { background: rgba(227,235,229,.48); }
+.search-results-list strong { color: var(--sage); font: 700 13px Georgia, serif; }
+.search-results-list span { color: var(--ink); font: 13px/1.48 Georgia, serif; }
+.search-results-list mark { padding: 0 2px; border-radius: 3px; color: #3c2f10; background: #f2dc87; }
+.search-results-list b { padding: 7px 9px; border: 1px solid #b9c9c0; border-radius: 7px; color: var(--sage); background: var(--sage-soft); font-size: 9px; font-weight: 850; }
+.search-results-list p { margin: 28px 0; color: var(--muted); font: italic 13px Georgia, serif; text-align: center; }
 .settings-window { position: fixed; z-index: 55; inset: 0; width: 100vw; overflow: auto; color: var(--ink); background: linear-gradient(180deg, rgba(255,254,251,.98), var(--paper)); }
 .settings-window::before { content: ""; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(circle at top right, rgba(227,235,229,.82), transparent 34%); }
 .settings-window-heading { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 24px max(24px, 7vw) 18px; border-bottom: 1px solid var(--line); background: rgba(255,254,251,.96); backdrop-filter: blur(12px); }
@@ -436,22 +464,29 @@ button, select { cursor: pointer; }
 :root[data-theme="dark"] .topbar,
 :root[data-theme="dark"] .saved-library-heading,
 :root[data-theme="dark"] .settings-window-heading,
+:root[data-theme="dark"] .search-library-heading,
 :root[data-theme="dark"] .chapter-dropdown-heading,
 :root[data-theme="dark"] .passage-menu-heading { background: rgba(25,32,27,.96); }
 :root[data-theme="dark"] .saved-library,
+:root[data-theme="dark"] .search-library,
 :root[data-theme="dark"] .settings-window { background: linear-gradient(180deg, rgba(20,26,22,.99), var(--paper)); }
 :root[data-theme="dark"] .saved-library::before,
+:root[data-theme="dark"] .search-library::before,
 :root[data-theme="dark"] .settings-window::before { background: radial-gradient(circle at top right, rgba(58,82,69,.42), transparent 36%); }
 :root[data-theme="dark"] .settings-card,
 :root[data-theme="dark"] .saved-bookmark-card,
 :root[data-theme="dark"] .saved-section,
 :root[data-theme="dark"] .saved-section-top,
+:root[data-theme="dark"] .search-library-box,
+:root[data-theme="dark"] .search-results-list,
 :root[data-theme="dark"] .saved-group > button { border-color: var(--line); background: rgba(25,32,27,.92); box-shadow: 0 8px 24px rgba(0,0,0,.2); }
 :root[data-theme="dark"] .settings-card-muted,
 :root[data-theme="dark"] .saved-tabs,
 :root[data-theme="dark"] .settings-window-heading > button,
+:root[data-theme="dark"] .search-library-heading > button,
 :root[data-theme="dark"] .saved-library-heading > button { background: #202821; }
 :root[data-theme="dark"] .settings-card select,
+:root[data-theme="dark"] .search-library-box input,
 :root[data-theme="dark"] .inline-note-editor textarea,
 :root[data-theme="dark"] .notes-card textarea { color: var(--ink); border-color: var(--line); background: #111713; }
 :root[data-theme="dark"] .audio-source-summary { border-color: var(--line); background: rgba(35,49,41,.78); }
@@ -533,6 +568,8 @@ button, select { cursor: pointer; }
 :root[data-theme="dark"] .lexicon-intro-row > button,
 :root[data-theme="dark"] .saved-tabs button,
 :root[data-theme="dark"] .saved-read-aloud,
+:root[data-theme="dark"] .search-library-box button,
+:root[data-theme="dark"] .search-results-list b,
 :root[data-theme="dark"] .saved-jump b,
 :root[data-theme="true-dark"] .study-collapse,
 :root[data-theme="true-dark"] .study-rail button,
@@ -543,6 +580,8 @@ button, select { cursor: pointer; }
 :root[data-theme="true-dark"] .lexicon-intro-row > button,
 :root[data-theme="true-dark"] .saved-tabs button,
 :root[data-theme="true-dark"] .saved-read-aloud,
+:root[data-theme="true-dark"] .search-library-box button,
+:root[data-theme="true-dark"] .search-results-list b,
 :root[data-theme="true-dark"] .saved-jump b {
   color: var(--theme-control-ink);
   border-color: var(--theme-control-border);
@@ -556,6 +595,8 @@ button, select { cursor: pointer; }
 :root[data-theme="dark"] .word-study-control button:hover,
 :root[data-theme="dark"] .lexicon-intro-row > button:hover,
 :root[data-theme="dark"] .saved-read-aloud:hover,
+:root[data-theme="dark"] .search-library-box button:hover,
+:root[data-theme="dark"] .search-results-list b:hover,
 :root[data-theme="dark"] .saved-jump b:hover,
 :root[data-theme="true-dark"] .study-collapse:hover,
 :root[data-theme="true-dark"] .study-rail button:hover,
@@ -565,6 +606,8 @@ button, select { cursor: pointer; }
 :root[data-theme="true-dark"] .word-study-control button:hover,
 :root[data-theme="true-dark"] .lexicon-intro-row > button:hover,
 :root[data-theme="true-dark"] .saved-read-aloud:hover,
+:root[data-theme="true-dark"] .search-library-box button:hover,
+:root[data-theme="true-dark"] .search-results-list b:hover,
 :root[data-theme="true-dark"] .saved-jump b:hover {
   border-color: var(--sage);
   background: var(--theme-control-hover-bg);
@@ -576,6 +619,8 @@ button, select { cursor: pointer; }
 :root[data-theme="dark"] .word-study-control button,
 :root[data-theme="dark"] .lexicon-intro-row > button,
 :root[data-theme="dark"] .saved-read-aloud,
+:root[data-theme="dark"] .search-library-box button,
+:root[data-theme="dark"] .search-results-list b,
 :root[data-theme="dark"] .saved-jump b,
 :root[data-theme="true-dark"] .study-collapse,
 :root[data-theme="true-dark"] .study-rail button,
@@ -584,6 +629,8 @@ button, select { cursor: pointer; }
 :root[data-theme="true-dark"] .word-study-control button,
 :root[data-theme="true-dark"] .lexicon-intro-row > button,
 :root[data-theme="true-dark"] .saved-read-aloud,
+:root[data-theme="true-dark"] .search-library-box button,
+:root[data-theme="true-dark"] .search-results-list b,
 :root[data-theme="true-dark"] .saved-jump b {
   box-shadow: var(--theme-control-shadow);
 }
@@ -609,26 +656,36 @@ button, select { cursor: pointer; }
 :root[data-theme="dark"] .saved-library-button,
 :root[data-theme="dark"] .passage-menu,
 :root[data-theme="dark"] .chapter-dropdown { border-color: var(--line); background: var(--white); }
+:root[data-theme="dark"] .bible-search-control input { color: var(--ink); }
+:root[data-theme="dark"] .search-results-list button:hover { background: rgba(40,52,44,.72); }
+:root[data-theme="dark"] .search-results-list mark { color: #f8edd1; background: #765e23; }
 
 :root[data-theme="true-dark"] .topbar,
 :root[data-theme="true-dark"] .saved-library-heading,
 :root[data-theme="true-dark"] .settings-window-heading,
+:root[data-theme="true-dark"] .search-library-heading,
 :root[data-theme="true-dark"] .chapter-dropdown-heading,
 :root[data-theme="true-dark"] .passage-menu-heading { background: rgba(17,19,21,.96); }
 :root[data-theme="true-dark"] .saved-library,
+:root[data-theme="true-dark"] .search-library,
 :root[data-theme="true-dark"] .settings-window { background: linear-gradient(180deg, rgba(8,10,13,.99), var(--paper)); }
 :root[data-theme="true-dark"] .saved-library::before,
+:root[data-theme="true-dark"] .search-library::before,
 :root[data-theme="true-dark"] .settings-window::before { background: radial-gradient(circle at top right, rgba(50,60,72,.34), transparent 36%); }
 :root[data-theme="true-dark"] .settings-card,
 :root[data-theme="true-dark"] .saved-bookmark-card,
 :root[data-theme="true-dark"] .saved-section,
 :root[data-theme="true-dark"] .saved-section-top,
+:root[data-theme="true-dark"] .search-library-box,
+:root[data-theme="true-dark"] .search-results-list,
 :root[data-theme="true-dark"] .saved-group > button { border-color: var(--line); background: rgba(20,24,30,.92); box-shadow: 0 8px 24px rgba(0,0,0,.22); }
 :root[data-theme="true-dark"] .settings-card-muted,
 :root[data-theme="true-dark"] .saved-tabs,
 :root[data-theme="true-dark"] .settings-window-heading > button,
+:root[data-theme="true-dark"] .search-library-heading > button,
 :root[data-theme="true-dark"] .saved-library-heading > button { background: #1d2226; }
 :root[data-theme="true-dark"] .settings-card select,
+:root[data-theme="true-dark"] .search-library-box input,
 :root[data-theme="true-dark"] .inline-note-editor textarea,
 :root[data-theme="true-dark"] .notes-card textarea { color: var(--ink); border-color: var(--line); background: #101316; }
 :root[data-theme="true-dark"] .audio-source-summary { border-color: #31373d; background: rgba(24,30,36,.78); box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
@@ -690,6 +747,9 @@ button, select { cursor: pointer; }
 :root[data-theme="true-dark"] .saved-library-button,
 :root[data-theme="true-dark"] .passage-menu,
 :root[data-theme="true-dark"] .chapter-dropdown { border-color: var(--line); background: var(--white); }
+:root[data-theme="true-dark"] .bible-search-control input { color: var(--ink); }
+:root[data-theme="true-dark"] .search-results-list button:hover { background: rgba(24,30,36,.74); }
+:root[data-theme="true-dark"] .search-results-list mark { color: #f7ead0; background: #6b5524; }
 
 @media (max-width: 1050px) {
   .workspace { grid-template-columns: minmax(0, 1fr) var(--study-panel-width, 380px); }
@@ -704,6 +764,7 @@ button, select { cursor: pointer; }
   .brand span { display: none; }
   .passage-picker { grid-row: 2; grid-column: 1 / -1; position: fixed; top: 62px; left: 0; right: 0; height: 42px; border-radius: 0; justify-content: center; background: white; z-index: 40; }
   .passage-picker .book-button { min-width: 125px; }
+  .bible-search-control.expanded { width: min(220px, 48vw); }
   .translation-badge { display: none; }
   .workspace { margin-top: 42px; }
   .workspace, .workspace.study-collapsed { display: block; }
@@ -734,6 +795,13 @@ button, select { cursor: pointer; }
   .settings-window-heading { padding: 18px 18px 14px; }
   .settings-window-heading strong { font-size: 22px; }
   .settings-window-body { grid-template-columns: 1fr; width: calc(100vw - 32px); padding: 24px 0 54px; }
+  .search-library-heading { padding: 18px 18px 14px; }
+  .search-library-heading strong { font-size: 22px; }
+  .search-library-body { width: calc(100vw - 32px); padding: 24px 0 54px; }
+  .search-library-box { grid-template-columns: 1fr; }
+  .search-library-box button { justify-self: start; }
+  .search-results-list button { grid-template-columns: 1fr; gap: 8px; }
+  .search-results-list b { justify-self: start; }
   .settings-card label { grid-template-columns: 58px minmax(0, 1fr) 38px; }
   .saved-group { width: calc(100vw - 32px); padding: 22px 0; }
   .saved-group > button { grid-template-columns: 24px minmax(0, 1fr); gap: 11px; }
@@ -760,6 +828,7 @@ button, select { cursor: pointer; }
   .passage-picker .chapter-arrow { width: 27px; }
   .passage-picker .book-button { min-width: 110px; padding: 0 9px; }
   .passage-picker .chapter-button { min-width: 92px; }
+  .bible-search-control.expanded { position: absolute; right: 3px; width: min(260px, calc(100vw - 26px)); background: var(--white); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(47,42,32,.12); }
   .passage-menu-heading { padding: 18px 18px 14px; }
   .testament-columns { padding: 20px 18px 26px; }
   .book-grid { gap: 2px 5px; }
