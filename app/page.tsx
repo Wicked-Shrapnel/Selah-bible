@@ -1286,14 +1286,12 @@ export default function Home() {
 
         <div className="passage-picker" ref={passagePickerRef} aria-label="Choose a Bible passage">
           <button className="book-button" onClick={() => setPicker(picker === "books" ? null : "books")} aria-expanded={picker === "books"}>
-            {selectedBook.name} <span>⌄</span>
+            {selectedBook.name}
           </button>
           <div className="divider" />
-          <button className="chapter-arrow" onClick={() => goToAdjacentChapter(-1)} aria-label="Previous chapter">‹</button>
           <button className="chapter-button" onClick={() => setPicker(picker === "chapters" ? null : "chapters")} aria-expanded={picker === "chapters"}>
-            Chapter {chapter} <span>⌄</span>
+            Chapter {chapter}
           </button>
-          <button className="chapter-arrow" onClick={() => goToAdjacentChapter(1)} aria-label="Next chapter">›</button>
           <form className={`bible-search-control ${searchExpanded ? "expanded" : ""}`} onSubmit={(event) => { event.preventDefault(); void searchBible(); }}>
             {searchExpanded ? (
               <>
@@ -1313,7 +1311,9 @@ export default function Home() {
             )}
           </form>
           {picker === "chapters" && (
-            <section className="chapter-dropdown" aria-label={`Chapters in ${selectedBook.name}`}>
+            <>
+              <button className="picker-backdrop" onClick={() => setPicker(null)} aria-label="Close chapter picker" />
+              <section className="chapter-dropdown" aria-label={`Chapters in ${selectedBook.name}`}>
               <div className="chapter-dropdown-heading">
                 <div><strong>Choose a chapter</strong><span>{selectedBook.name}</span></div>
                 <button onClick={() => setPicker(null)} aria-label="Close chapter menu">×</button>
@@ -1323,7 +1323,8 @@ export default function Home() {
                   <button key={number} className={number === chapter ? "selected" : ""} onClick={() => { setChapter(number); setPicker(null); }}>{number}</button>
                 ))}
               </div>
-            </section>
+              </section>
+            </>
           )}
         </div>
 
