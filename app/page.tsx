@@ -11,7 +11,7 @@ type CommentaryView = "expository" | "historical";
 type HighlightColor = "gold" | "sage" | "blue" | "rose";
 type ThemePreference = "system" | "light" | "dark" | "true-dark";
 type AudioSourcePreference = "auto" | "official" | "david";
-type SearchLayoutPreference = "list" | "spread";
+type SearchLayoutPreference = "list" | "sectioned";
 type LexiconEntry = { word: string; transliteration: string; pronunciation: string; spoken: string; number: string; meaning: string; lang: "he-IL" | "el-GR" };
 type OriginalWordToken = { text: string; strongs?: string[] };
 type OriginalLanguageBook = { source: string; verses: Record<string, OriginalWordToken[]> };
@@ -38,6 +38,7 @@ type BibleSourceVerse = { verse: string; text: string };
 type BibleSourceChapter = { chapter: string; verses: BibleSourceVerse[] };
 type BibleSourceBook = { book: string; chapters: BibleSourceChapter[] };
 type BibleSearchResult = { book: Book; chapter: number; verse: number; reference: string; text: string; rank: number; kind: "match" | "suggestion" };
+type BibleSearchSection = { key: string; book: Book; chapter: number; verseStart: number; verseEnd: number; kind: "match" | "suggestion"; items: BibleSearchResult[] };
 
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const MIN_STUDY_PANEL_WIDTH = 380;
@@ -350,7 +351,9 @@ export default function Home() {
       if (savedAudioSource && ["auto", "official", "david"].includes(savedAudioSource)) {
         setAudioSourcePreference(savedAudioSource === "official" && !OFFICIAL_AUDIO_ENABLED ? "david" : savedAudioSource);
       }
-      if (savedSearchLayout && ["list", "spread"].includes(savedSearchLayout)) setSearchLayoutPreference(savedSearchLayout);
+      if (savedSearchLayout && ["list", "sectioned", "spread"].includes(savedSearchLayout)) {
+        setSearchLayoutPreference(savedSearchLayout === "spread" ? "sectioned" : savedSearchLayout);
+      }
       if (savedOriginalDefinition === "true") setReadOriginalDefinition(true);
       if (Number.isFinite(savedStudyPanelWidth)) setStudyPanelWidth(clampNumber(savedStudyPanelWidth, MIN_STUDY_PANEL_WIDTH, MAX_STUDY_PANEL_WIDTH));
       if (savedPlace) {
@@ -1245,6 +1248,33 @@ export default function Home() {
     });
   };
 
+  const searchSections = useMemo(() => {
+    const sections: BibleSearchSection[] = [];
+    searchResults.forEach((result) => {
+      const previous = sections.at(-1);
+      const canAppend = previous
+        && previous.book.name === result.book.name
+        && previous.chapter === result.chapter
+        && previous.kind === result.kind
+        && result.verse - previous.verseEnd <= 2;
+      if (canAppend) {
+        previous.items.push(result);
+        previous.verseEnd = result.verse;
+        return;
+      }
+      sections.push({
+        key: `${result.book.name}-${result.chapter}-${result.verse}-${result.kind}`,
+        book: result.book,
+        chapter: result.chapter,
+        verseStart: result.verse,
+        verseEnd: result.verse,
+        kind: result.kind,
+        items: [result],
+      });
+    });
+    return sections;
+  }, [searchResults]);
+
   const openBookmarkedChapter = () => {
     if (!bookmark) return;
     const book = books.find((item) => item.name === bookmark.book);
@@ -1461,11 +1491,11 @@ export default function Home() {
                     setSearchLayoutPreference(nextLayout);
                     localStorage.setItem("selah-search-layout", nextLayout);
                   }}>
-                    <option value="list">List</option>
-                    <option value="spread">Bible spread</option>
+                    <option value="list">Verse list</option>
+                    <option value="sectioned">Sectioned passage</option>
                   </select>
                 </label>
-                <p className="settings-help">Bible spread lays search results out like facing pages on larger screens, while keeping a single readable column on mobile.</p>
+                <p className="settings-help">Sectioned passage groups nearby search hits into readable blocks the way a physical Bible is usually broken into passages.</p>
               </div>
               <div className="settings-card">
                 <div className="settings-card-heading">
@@ -1587,9 +1617,39 @@ export default function Home() {
               })()}
               {searchStatus === "error" && "Search is unavailable right now."}
             </div>
-            <div className={`search-results-list ${searchLayoutPreference === "spread" ? "spread-layout" : "list-layout"}`}>
+            <div className={`search-results-list ${searchLayoutPreference === "sectioned" ? "sectioned-layout" : "list-layout"}`}>
               {searchStatus === "ready" && searchResults.length === 0 && <p>No verses found. Try a shorter word or phrase.</p>}
-              {searchResults.map((result) => (
+              {searchLayoutPreference === "sectioned" ? searchSections.map((section) => (
+                <section key={section.key} className={`search-section-card ${section.kind === "suggestion" ? "search-suggestion" : ""}`} aria-label={`${section.book.name} ${section.chapter}:${section.verseStart}${section.verseEnd !== section.verseStart ? `-${section.verseEnd}` : ""}`}>
+                  <header className="search-section-heading">
+                    <strong>{section.book.name} {section.chapter}:{section.verseStart}{section.verseEnd !== section.verseStart ? `-${section.verseEnd}` : ""}</strong>
+                    {section.kind === "suggestion" && <em>Related suggestion</em>}
+                  </header>
+                  <div className="search-section-body">
+                    {section.items.map((result) => (
+                      <div key={`${result.reference}-${result.rank}-${result.kind}`} className="search-section-verse">
+                        <button
+                          type="button"
+                          className="search-section-jump"
+                          onClick={() => openSearchResult(result)}
+                          aria-label={`Open ${result.reference}`}
+                        >
+                          <span className="search-verse-number">{result.verse}</span>
+                          <span className="search-result-text">{renderSearchVerseText(result)}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="search-read-aloud"
+                          onClick={() => void readSearchResult(result)}
+                          aria-label={`Read ${result.reference} aloud`}
+                        >
+                          Read aloud
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )) : searchResults.map((result) => (
                 <div
                   key={`${result.reference}-${result.rank}-${result.kind}`}
                   className={`search-result-card ${result.kind === "suggestion" ? "search-suggestion" : ""}`}
