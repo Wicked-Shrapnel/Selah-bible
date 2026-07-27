@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 
 type Verse = { id: number; reference: string; text: string };
 type Book = { name: string; chapters: number; testament: "Old Testament" | "New Testament" };
@@ -19,6 +19,7 @@ type StrongDictionary = Record<string, StrongDictionaryEntry>;
 type SavedAudioManifest = { chapters: string[]; chapterFiles?: Record<string, string>; format?: string; source?: string };
 type CommentaryReference = { osis: string; label: string };
 type CommentaryEntry = { anchorVerse: number; verseStart: number; verseEnd: number; heading: string; text: string; references: CommentaryReference[] };
+type CommentaryReferenceLink = CommentaryReference & { href: string; start: number; end: number };
 type CommentarySource = {
   id: string;
   title: string;
@@ -63,6 +64,75 @@ const books: Book[] = [
   ["1 Peter",5,"New Testament"],["2 Peter",3,"New Testament"],["1 John",5,"New Testament"],["2 John",1,"New Testament"],["3 John",1,"New Testament"],
   ["Jude",1,"New Testament"],["Revelation",22,"New Testament"],
 ].map(([name, chapters, testament]) => ({ name, chapters, testament } as Book));
+
+const bookReferenceAliases: Record<string, string> = {
+  ge: "Genesis", gen: "Genesis", genesis: "Genesis",
+  ex: "Exodus", exo: "Exodus", exod: "Exodus", exodus: "Exodus",
+  le: "Leviticus", lev: "Leviticus", leviticus: "Leviticus",
+  nu: "Numbers", num: "Numbers", numb: "Numbers", numbers: "Numbers",
+  de: "Deuteronomy", deut: "Deuteronomy", deuteronomy: "Deuteronomy",
+  jos: "Joshua", josh: "Joshua", joshua: "Joshua",
+  judg: "Judges", judges: "Judges", jdg: "Judges",
+  ru: "Ruth", ruth: "Ruth",
+  "1sa": "1 Samuel", "1sam": "1 Samuel", "1samuel": "1 Samuel", "1sm": "1 Samuel",
+  "2sa": "2 Samuel", "2sam": "2 Samuel", "2samuel": "2 Samuel", "2sm": "2 Samuel",
+  "1ki": "1 Kings", "1kgs": "1 Kings", "1kings": "1 Kings",
+  "2ki": "2 Kings", "2kgs": "2 Kings", "2kings": "2 Kings",
+  "1ch": "1 Chronicles", "1chr": "1 Chronicles", "1chronicles": "1 Chronicles",
+  "2ch": "2 Chronicles", "2chr": "2 Chronicles", "2chronicles": "2 Chronicles",
+  ezr: "Ezra", ezra: "Ezra",
+  ne: "Nehemiah", neh: "Nehemiah", nehemiah: "Nehemiah",
+  es: "Esther", est: "Esther", esther: "Esther",
+  job: "Job",
+  ps: "Psalms", psa: "Psalms", psalm: "Psalms", psalms: "Psalms",
+  pr: "Proverbs", prov: "Proverbs", proverbs: "Proverbs",
+  ec: "Ecclesiastes", eccles: "Ecclesiastes", eccl: "Ecclesiastes", ecclesiastes: "Ecclesiastes",
+  song: "Song of Solomon", sos: "Song of Solomon", solomon: "Song of Solomon",
+  isa: "Isaiah", is: "Isaiah", isaiah: "Isaiah",
+  jer: "Jeremiah", jeremiah: "Jeremiah",
+  la: "Lamentations", lam: "Lamentations", lamentations: "Lamentations",
+  eze: "Ezekiel", ezek: "Ezekiel", ezekiel: "Ezekiel",
+  da: "Daniel", dan: "Daniel", daniel: "Daniel",
+  ho: "Hosea", hos: "Hosea", hosea: "Hosea",
+  joe: "Joel", joel: "Joel",
+  am: "Amos", amos: "Amos",
+  ob: "Obadiah", obad: "Obadiah", obadiah: "Obadiah",
+  jon: "Jonah", jonah: "Jonah",
+  mic: "Micah", micah: "Micah",
+  na: "Nahum", nah: "Nahum", nahum: "Nahum",
+  hab: "Habakkuk", habakkuk: "Habakkuk",
+  zep: "Zephaniah", zeph: "Zephaniah", zephaniah: "Zephaniah",
+  hag: "Haggai", haggai: "Haggai",
+  zec: "Zechariah", zech: "Zechariah", zechariah: "Zechariah",
+  mal: "Malachi", malachi: "Malachi",
+  mt: "Matthew", mat: "Matthew", matt: "Matthew", matthew: "Matthew",
+  mr: "Mark", mar: "Mark", mark: "Mark", mk: "Mark",
+  lu: "Luke", luk: "Luke", luke: "Luke", lk: "Luke",
+  joh: "John", john: "John", jn: "John",
+  ac: "Acts", act: "Acts", acts: "Acts",
+  ro: "Romans", rom: "Romans", romans: "Romans",
+  "1co": "1 Corinthians", "1cor": "1 Corinthians", "1corinthians": "1 Corinthians",
+  "2co": "2 Corinthians", "2cor": "2 Corinthians", "2corinthians": "2 Corinthians",
+  ga: "Galatians", gal: "Galatians", galatians: "Galatians",
+  eph: "Ephesians", ephesians: "Ephesians",
+  php: "Philippians", phil: "Philippians", philippians: "Philippians",
+  col: "Colossians", colossians: "Colossians",
+  "1th": "1 Thessalonians", "1thess": "1 Thessalonians", "1thessalonians": "1 Thessalonians",
+  "2th": "2 Thessalonians", "2thess": "2 Thessalonians", "2thessalonians": "2 Thessalonians",
+  "1ti": "1 Timothy", "1tim": "1 Timothy", "1timothy": "1 Timothy",
+  "2ti": "2 Timothy", "2tim": "2 Timothy", "2timothy": "2 Timothy",
+  tit: "Titus", titus: "Titus",
+  phm: "Philemon", philemon: "Philemon",
+  heb: "Hebrews", hebrews: "Hebrews",
+  jas: "James", jam: "James", james: "James",
+  "1pe": "1 Peter", "1pet": "1 Peter", "1peter": "1 Peter",
+  "2pe": "2 Peter", "2pet": "2 Peter", "2peter": "2 Peter",
+  "1jo": "1 John", "1joh": "1 John", "1john": "1 John", "1jn": "1 John",
+  "2jo": "2 John", "2joh": "2 John", "2john": "2 John", "2jn": "2 John",
+  "3jo": "3 John", "3joh": "3 John", "3john": "3 John", "3jn": "3 John",
+  jude: "Jude", jud: "Jude",
+  re: "Revelation", rev: "Revelation", revelation: "Revelation",
+};
 
 const genesisOne = [
   "In the beginning God created the heaven and the earth.",
@@ -160,6 +230,84 @@ function chapterMp3AudioPath(book: string, chapterNumber: number) {
 
 function bibleFileName(name: string) {
   return `${name.replace(/\s+/g, "")}.json`;
+}
+
+function normalizedBookReferenceName(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function findReferenceBook(rawBook: string) {
+  const normalized = normalizedBookReferenceName(rawBook);
+  const alias = bookReferenceAliases[normalized];
+  return books.find((book) => book.name === alias)
+    || books.find((book) => normalizedBookReferenceName(book.name) === normalized)
+    || null;
+}
+
+function passageHref(book: Book, chapterNumber: number, verseNumber = 1) {
+  const params = new URLSearchParams({
+    book: book.name,
+    chapter: String(chapterNumber),
+    verse: String(verseNumber),
+  });
+  return `/?${params.toString()}`;
+}
+
+function passageFromSearchParams(params: URLSearchParams) {
+  const bookName = params.get("book");
+  const chapterNumber = Number(params.get("chapter"));
+  const verseNumber = Number(params.get("verse") || "1");
+  if (!bookName || !Number.isFinite(chapterNumber) || !Number.isFinite(verseNumber)) return null;
+  const book = books.find((item) => item.name === bookName);
+  if (!book || chapterNumber < 1 || chapterNumber > book.chapters || verseNumber < 1) return null;
+  return { book, chapter: chapterNumber, verse: verseNumber };
+}
+
+function parsePassageReference(rawReference: string) {
+  const firstReference = rawReference.split(/[;,]/)[0]?.trim();
+  if (!firstReference) return null;
+
+  const osisMatch = firstReference.match(/^([1-3]?[A-Za-z]+)\.(\d+)\.(\d+)/);
+  if (osisMatch) {
+    const book = findReferenceBook(osisMatch[1]);
+    const chapterNumber = Number(osisMatch[2]);
+    const verseNumber = Number(osisMatch[3]);
+    if (book && chapterNumber >= 1 && chapterNumber <= book.chapters && verseNumber >= 1) return { book, chapter: chapterNumber, verse: verseNumber };
+  }
+
+  const textMatch = firstReference.match(/^([1-3]?\s?[A-Za-z]+(?:\s+of\s+[A-Za-z]+)?)(?:\.|\s)+(\d+):(\d+)/i);
+  if (!textMatch) return null;
+  const book = findReferenceBook(textMatch[1]);
+  const chapterNumber = Number(textMatch[2]);
+  const verseNumber = Number(textMatch[3]);
+  if (!book || chapterNumber < 1 || chapterNumber > book.chapters || verseNumber < 1) return null;
+  return { book, chapter: chapterNumber, verse: verseNumber };
+}
+
+function commentaryReferenceHref(reference: CommentaryReference) {
+  const passage = parsePassageReference(reference.osis) || parsePassageReference(reference.label);
+  return passage ? passageHref(passage.book, passage.chapter, passage.verse) : "";
+}
+
+function commentaryReferenceLinks(text: string, references: CommentaryReference[]) {
+  const usedRanges: { start: number; end: number }[] = [];
+  return references
+    .map((reference) => {
+      const href = commentaryReferenceHref(reference);
+      if (!href) return null;
+      const labels = [reference.label, reference.osis.replace(/\./g, " ")].filter(Boolean);
+      const match = labels
+        .map((label) => ({ label, start: text.indexOf(label) }))
+        .filter((item) => item.start >= 0)
+        .sort((a, b) => b.label.length - a.label.length)[0];
+      if (!match) return null;
+      const end = match.start + match.label.length;
+      if (usedRanges.some((range) => match.start < range.end && end > range.start)) return null;
+      usedRanges.push({ start: match.start, end });
+      return { ...reference, href, start: match.start, end } as CommentaryReferenceLink;
+    })
+    .filter((reference): reference is CommentaryReferenceLink => Boolean(reference))
+    .sort((a, b) => a.start - b.start);
 }
 
 function normalizeSearchText(text: string) {
@@ -371,6 +519,13 @@ export default function Home() {
       }
       if (savedOriginalDefinition === "true") setReadOriginalDefinition(true);
       if (Number.isFinite(savedStudyPanelWidth)) setStudyPanelWidth(clampNumber(savedStudyPanelWidth, MIN_STUDY_PANEL_WIDTH, MAX_STUDY_PANEL_WIDTH));
+      const linkedPassage = passageFromSearchParams(new URLSearchParams(window.location.search));
+      if (linkedPassage) {
+        pendingSavedVerse.current = linkedPassage.verse;
+        setSelectedBook(linkedPassage.book);
+        setChapter(linkedPassage.chapter);
+        return;
+      }
       if (savedPlace) {
         const parsed = JSON.parse(savedPlace) as SavedPlace;
         const savedBook = books.find((book) => book.name === parsed.book);
@@ -1061,6 +1216,10 @@ export default function Home() {
   }, [commentaryData, selectedVerse]);
 
   const commentaryTokens = useMemo(() => activeCommentaryEntry?.text.split(/(\s+)/) || [], [activeCommentaryEntry]);
+  const activeCommentaryReferenceLinks = useMemo(
+    () => activeCommentaryEntry ? commentaryReferenceLinks(activeCommentaryEntry.text, activeCommentaryEntry.references) : [],
+    [activeCommentaryEntry],
+  );
 
   useEffect(() => {
     if (!isReadingCommentary || isCommentaryPaused || commentaryWordIndex === null) return;
@@ -1347,6 +1506,54 @@ export default function Home() {
     setIsCommentaryPaused(false);
     setCommentaryWordIndex(commentaryTokens.findIndex((token) => !/^\s+$/.test(token)));
     window.speechSynthesis.speak(utterance);
+  };
+
+  const renderCommentaryText = () => {
+    const rendered: ReactNode[] = [];
+    let offset = 0;
+    let activeLink: CommentaryReferenceLink | null = null;
+    let activeLinkNodes: ReactNode[] = [];
+
+    const flushLink = () => {
+      if (!activeLink) return;
+      rendered.push(
+        <a
+          key={`commentary-reference-${activeLink.start}-${activeLink.href}`}
+          className="commentary-passage-link"
+          href={activeLink.href}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Open ${activeLink.label} in a new tab`}
+        >
+          {activeLinkNodes}
+        </a>,
+      );
+      activeLink = null;
+      activeLinkNodes = [];
+    };
+
+    commentaryTokens.forEach((token, index) => {
+      const tokenStart = offset;
+      offset += token.length;
+      const tokenEnd = offset;
+      const link = activeCommentaryReferenceLinks.find((reference) => tokenStart >= reference.start && tokenEnd <= reference.end) || null;
+      const node = /^\s+$/.test(token)
+        ? token
+        : <span key={`${token}-${index}`} className={commentaryWordIndex === index ? "commentary-spoken-word" : ""}>{token}</span>;
+
+      if (link) {
+        if (activeLink?.href !== link.href || activeLink.start !== link.start) flushLink();
+        activeLink = link;
+        activeLinkNodes.push(node);
+        return;
+      }
+
+      flushLink();
+      rendered.push(node);
+    });
+
+    flushLink();
+    return rendered;
   };
 
   const startStudyResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -1897,9 +2104,7 @@ export default function Home() {
                         </div>
                         <h2>{selectedBook.name} {chapter}:{activeCommentaryEntry.verseStart}{activeCommentaryEntry.verseEnd !== activeCommentaryEntry.verseStart ? `–${activeCommentaryEntry.verseEnd}` : ""}</h2>
                         <p className={isReadingCommentary ? "commentary-reading" : ""} aria-live="off">
-                          {commentaryTokens.map((token, index) => /^\s+$/.test(token) ? token : (
-                            <span key={`${token}-${index}`} className={commentaryWordIndex === index ? "commentary-spoken-word" : ""}>{token}</span>
-                          ))}
+                          {renderCommentaryText()}
                         </p>
                         <div className="commentary-author">
                           <span>{commentarySourceInitials(commentaryData.source)}</span>
@@ -1916,7 +2121,12 @@ export default function Home() {
                         <div className="cross-references">
                           <h3>References in this commentary</h3>
                           <div className="reference-chips">
-                            {activeCommentaryEntry.references.map((reference, index) => <span key={`${reference.osis}-${index}`}>{reference.label}</span>)}
+                            {activeCommentaryEntry.references.map((reference, index) => {
+                              const href = commentaryReferenceHref(reference);
+                              return href ? (
+                                <a key={`${reference.osis}-${index}`} href={href} target="_blank" rel="noreferrer" aria-label={`Open ${reference.label} in a new tab`}>{reference.label}</a>
+                              ) : <span key={`${reference.osis}-${index}`}>{reference.label}</span>;
+                            })}
                           </div>
                         </div>
                       )}
