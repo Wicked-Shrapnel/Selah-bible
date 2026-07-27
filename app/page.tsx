@@ -1223,13 +1223,13 @@ export default function Home() {
                   localStorage.setItem("selah-audio-source", nextSource);
                 }}>
                   <option value="auto">Automatic - David only for now</option>
-                  <option value="official" disabled>Official audio Bible - disabled right now</option>
+                  <option value="official" disabled>Official audio Bible — disabled right now</option>
                   <option value="david">Microsoft David</option>
                 </select>
               </label>
               <div className="audio-source-summary">
                 <span>Primary</span>
-                <strong>{shouldUseChapterMp3Audio ? "Official audio Bible" : audioSourcePreference === "david" ? "Microsoft David selected" : "Official audio Bible disabled right now"}</strong>
+                <strong>{shouldUseChapterMp3Audio ? "Official audio Bible" : audioSourcePreference === "david" ? "Microsoft David selected" : "Official audio Bible is disabled right now"}</strong>
                 <p>{shouldUseChapterMp3Audio ? "Selah will play the imported KJV chapter MP3 for this chapter." : audioSourcePreference === "david" ? "Selah will use David for read aloud." : "The official chapter recordings are kept local for now and are not active in the app."}</p>
               </div>
               <div className="audio-source-summary">
