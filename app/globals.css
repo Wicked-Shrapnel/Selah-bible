@@ -345,7 +345,7 @@ button, select { cursor: pointer; }
 .commentary-source { display: block; margin-top: 12px; color: var(--sage); font-size: 8px; line-height: 1.4; text-decoration: none; }
 .commentary-source:hover { text-decoration: underline; }
 .commentary-state { padding: 22px; border: 1px dashed #c8c4b8; border-radius: 12px; color: var(--muted); background: rgba(255,255,255,.55); font: italic 13px/1.55 Georgia, serif; }
-.commentary-source-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 12px; padding: 4px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.48); }
+.commentary-source-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-bottom: 12px; padding: 4px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.48); }
 .commentary-source-tabs button { min-width: 0; padding: 9px 8px; border: 0; border-radius: 8px; color: var(--muted); text-align: left; background: transparent; }
 .commentary-source-tabs button span, .commentary-source-tabs button small { display: block; }
 .commentary-source-tabs button span { font-size: 10px; font-weight: 800; }

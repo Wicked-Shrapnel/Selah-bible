@@ -7,7 +7,7 @@ type Verse = { id: number; reference: string; text: string };
 type Book = { name: string; chapters: number; testament: "Old Testament" | "New Testament" };
 type Picker = "books" | "chapters" | null;
 type StudyTab = "commentary" | "lexicon" | "notes";
-type CommentaryView = "expository" | "historical";
+type CommentaryView = "expository" | "jfb" | "clarke";
 type HighlightColor = "gold" | "sage" | "blue" | "rose";
 type ThemePreference = "system" | "light" | "dark" | "true-dark";
 type AudioSourcePreference = "auto" | "official" | "david";
@@ -129,15 +129,25 @@ function bibleHubBookSlug(name: string) {
 }
 
 function commentarySourceId(view: CommentaryView) {
-  return view === "historical" ? "jfb" : "mhcc";
+  if (view === "jfb") return "jfb";
+  if (view === "clarke") return "clarke";
+  return "mhcc";
 }
 
 function commentarySourceLabel(view: CommentaryView) {
-  return view === "historical" ? "Historical context" : "Commentary";
+  if (view === "jfb") return "Historical context";
+  if (view === "clarke") return "Background";
+  return "Commentary";
 }
 
 function commentarySourceInitials(source: CommentarySource) {
-  return source.id === "jfb" ? "JFB" : "MH";
+  if (source.id === "jfb") return "JFB";
+  if (source.id === "clarke") return "AC";
+  return "MH";
+}
+
+function clarkeCommentaryUrl(bookName: string, chapterNumber: number) {
+  return `https://biblehub.com/commentaries/clarke/${bibleHubBookSlug(bookName)}/${chapterNumber}.htm`;
 }
 
 function chapterAudioBase(book: string, chapterNumber: number) {
@@ -270,7 +280,7 @@ export default function Home() {
   const [isResizingStudy, setIsResizingStudy] = useState(false);
   const [readOriginalDefinition, setReadOriginalDefinition] = useState(false);
   const [commentaryData, setCommentaryData] = useState<CommentaryChapter | null>(null);
-  const [commentaryStatus, setCommentaryStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [commentaryStatus, setCommentaryStatus] = useState<"loading" | "ready" | "error" | "linked">("loading");
   const [bookmark, setBookmark] = useState<SavedPlace | null>(null);
   const [savedPanelOpen, setSavedPanelOpen] = useState(false);
   const [savedViewTab, setSavedViewTab] = useState<"highlights" | "notes">("highlights");
@@ -477,8 +487,12 @@ export default function Home() {
 
   useEffect(() => {
     let ignore = false;
-    setCommentaryStatus("loading");
     setCommentaryData(null);
+    if (commentaryView === "clarke") {
+      setCommentaryStatus("linked");
+      return () => { ignore = true; };
+    }
+    setCommentaryStatus("loading");
     fetch(`/commentary/${commentarySourceId(commentaryView)}/${bookSlug(selectedBook.name)}/${chapter}.json`)
       .then((response) => {
         if (!response.ok) throw new Error("Commentary unavailable");
@@ -1063,7 +1077,7 @@ export default function Home() {
     panel.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
   }, [commentaryWordIndex, commentaryView, isCommentaryPaused, isReadingCommentary]);
 
-  const historicalCommentaryUrl = "https://ccel.org/j/jfb/jfb/JFB00.htm";
+  const clarkeUrl = clarkeCommentaryUrl(selectedBook.name, chapter);
   const chapterNotes = verses.filter((verse) => Boolean(notes[verseKey(verse.id)]));
   const selectedSectionIds = [...selectedForHighlight].sort((a, b) => a - b);
   const sectionNoteKey = `${passageKey}-section-${selectedSectionIds.join("_")}`;
@@ -1808,52 +1822,64 @@ export default function Home() {
                       <small>Devotional &amp; expository</small>
                     </button>
                     <button
-                      className={commentaryView === "historical" ? "active historical" : "historical"}
+                      className={commentaryView === "jfb" ? "active historical" : "historical"}
                       onClick={() => {
                         if (isReadingCommentary) stopReading();
-                        setCommentaryView("historical");
+                        setCommentaryView("jfb");
                       }}
                       role="tab"
-                      aria-selected={commentaryView === "historical"}
+                      aria-selected={commentaryView === "jfb"}
                     >
                       <span>Historical Context</span>
                       <small>JFB</small>
                     </button>
+                    <button
+                      className={commentaryView === "clarke" ? "active historical" : "historical"}
+                      onClick={() => {
+                        if (isReadingCommentary) stopReading();
+                        setCommentaryView("clarke");
+                      }}
+                      role="tab"
+                      aria-selected={commentaryView === "clarke"}
+                    >
+                      <span>Background</span>
+                      <small>Clarke</small>
+                    </button>
                   </div>
-                  {false && commentaryView === "historical" ? (
+                  {commentaryView === "clarke" ? (
                     <div className="commentary-card historical-commentary-card">
                       <div className="commentary-card-top">
-                        <span className="card-label">HISTORICAL CONTEXT</span>
-                        <span className="historical-badge">Historically based</span>
+                        <span className="card-label">BACKGROUND · ADAM CLARKE</span>
+                        <span className="historical-badge">Direct source</span>
                       </div>
-                      <h2>Jamieson-Fausset-Brown Commentary</h2>
+                      <h2>Adam Clarke's Commentary</h2>
                       <p>
-                        Scholarly background for {selectedBook.name}, with historical setting, literary analysis,
-                        original-language observations, outlines, and verse-by-verse notes.
+                        A fuller background layer for {selectedBook.name} {chapter}, with book introductions,
+                        historical setting, and extended explanatory notes.
                       </p>
                       <div className="historical-source-note">
-                        <strong>Read at the authorized source</strong>
+                        <strong>Open the chapter at the source</strong>
                         <span>
-                          The public-domain transcription is hosted by CCEL. It opens separately so the app
-                          does not re-publish text licensed to another host.
+                          Clarke is public-domain, and the chapter opens directly at Bible Hub so the app
+                          stays within the legal line while keeping JFB local as a fallback.
                         </span>
                       </div>
-                      <a className="historical-open-button" href={historicalCommentaryUrl} target="_blank" rel="noreferrer">
-                        Open {selectedBook.name} in JFB ↗
+                      <a className="historical-open-button" href={clarkeUrl} target="_blank" rel="noreferrer">
+                        Open {selectedBook.name} {chapter} in Clarke ↗
                       </a>
                       <div className="commentary-author">
-                        <span>JFB</span>
+                        <span>AC</span>
                         <div>
-                          <strong>Jamieson, Fausset &amp; Brown</strong>
-                          <small>Commentary Critical and Explanatory on the Whole Bible · 1871</small>
+                          <strong>Adam Clarke</strong>
+                          <small>Clarke's Commentary on the Bible · public domain</small>
                         </div>
                       </div>
                       <div className="commentary-media-plan">
                         <div>
-                          <strong>Text-only historical notes</strong>
-                          <span>Any future maps, plates, or diagrams should be handled as separate media.</span>
+                          <strong>Full background option</strong>
+                          <span>We can add Cambridge later as another direct-linked source.</span>
                         </div>
-                        <small>PLANNED</small>
+                        <small>LINKED</small>
                       </div>
                     </div>
                   ) : commentaryStatus === "loading" ? (

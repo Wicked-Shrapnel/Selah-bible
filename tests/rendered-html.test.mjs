@@ -187,11 +187,14 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /utterance\.onboundary/);
   assert.match(page, /commentary-spoken-word/);
   assert.match(page, /Historical Context/);
-  assert.match(page, /Jamieson-Fausset-Brown Commentary/);
+  assert.match(page, /Background/);
+  assert.match(page, /Adam Clarke's Commentary/);
   assert.match(page, /commentarySourceId/);
   assert.match(page, /commentary\/\$\{commentarySourceId\(commentaryView\)\}/);
   assert.match(page, /commentarySourceInitials/);
-  assert.match(page, /ccel\.org\/j\/jfb\/jfb\/JFB/);
+  assert.match(page, /clarkeCommentaryUrl/);
+  assert.match(page, /biblehub\.com\/commentaries\/clarke/);
+  assert.match(page, /Direct source/);
   assert.match(page, /wordStudyMode/);
   assert.match(page, /originalLanguageBookCache/);
   assert.match(page, /selectedOriginalEntries/);

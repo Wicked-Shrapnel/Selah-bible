@@ -43,16 +43,22 @@ historical, literary, and interpretive notes.
 The historical source is intentionally separated from Matthew Henry in the
 interface. Matthew Henry remains the devotional/expository commentary. JFB is
 stored locally in the same chapter JSON format and shown directly in the
-commentary sidebar:
+commentary sidebar. For a fuller background layer, the app also links to
+**Adam Clarke's Commentary** at Bible Hub:
 
 - Collection overview: https://ccel.org/j/jfb/jfb/JFB00.htm
 - Example book page: https://ccel.org/j/jfb/jfb/JFB01.htm
 - Current app behavior: displays the selected chapter in the Historical Context tab
 - Locally stored JFB text: public/commentary/jfb
+- Clarke overview: https://biblehub.com/commentaries/clarke/
+- Clarke example chapter: https://biblehub.com/commentaries/clarke/genesis/1.htm
+- Current app behavior: opens the selected chapter in the Background tab
 
 CCEL states that the expanded electronic edition is in the public domain. The
 local import preserves source attribution and keeps the commentary text,
-verse-range headings, and Scripture references as structured fields.
+verse-range headings, and Scripture references as structured fields. Clarke is
+also public domain, but in this app it is used as a direct link so we do not
+republish the transcription locally.
 
 JFB is text-only in this app. If a later historical source includes maps,
 plates, or diagrams, those should be handled as separate attributed media
