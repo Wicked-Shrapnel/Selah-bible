@@ -44,13 +44,17 @@ test("server-renders the Selah Bible reader", async () => {
 });
 
 test("ships the attributed whole-Bible commentary dataset", async () => {
-  const [manifestText, genesisText, sourceNotes] = await Promise.all([
+  const [manifestText, genesisText, jfbManifestText, jfbGenesisText, sourceNotes] = await Promise.all([
     readFile(new URL("../public/commentary/mhcc/manifest.json", import.meta.url), "utf8"),
     readFile(new URL("../public/commentary/mhcc/genesis/1.json", import.meta.url), "utf8"),
+    readFile(new URL("../public/commentary/jfb/manifest.json", import.meta.url), "utf8"),
+    readFile(new URL("../public/commentary/jfb/genesis/1.json", import.meta.url), "utf8"),
     readFile(new URL("../COMMENTARY_SOURCES.md", import.meta.url), "utf8"),
   ]);
   const manifest = JSON.parse(manifestText);
   const genesis = JSON.parse(genesisText);
+  const jfbManifest = JSON.parse(jfbManifestText);
+  const jfbGenesis = JSON.parse(jfbGenesisText);
 
   assert.equal(manifest.source.author, "Matthew Henry");
   assert.equal(manifest.source.license, "Public Domain");
@@ -60,7 +64,13 @@ test("ships the attributed whole-Bible commentary dataset", async () => {
   assert.equal(genesis.entries[0].verseStart, 1);
   assert.equal(genesis.entries[0].verseEnd, 2);
   assert.match(genesis.entries[0].text, /first verse of the Bible/i);
+  assert.match(jfbManifest.source.author, /Jamieson/);
+  assert.equal(jfbManifest.source.license, "Public Domain");
+  assert.equal(jfbManifest.chapterCount, 1189);
+  assert.ok(jfbManifest.entryCount > 19000);
+  assert.match(jfbGenesis.entries[1].text, /without form and void/i);
   assert.match(sourceNotes, /maps, photographs, charts, or\s+illustrations/i);
+  assert.match(sourceNotes, /public\/commentary\/jfb/);
 });
 
 test("bundles local Bible files and red-letter metadata", async () => {
@@ -178,8 +188,9 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /commentary-spoken-word/);
   assert.match(page, /Historical Context/);
   assert.match(page, /Jamieson-Fausset-Brown Commentary/);
-  assert.match(page, /historicalCommentaryUrl/);
-  assert.match(page, /Any future maps, plates, or diagrams should be handled as separate media/);
+  assert.match(page, /commentarySourceId/);
+  assert.match(page, /commentary\/\$\{commentarySourceId\(commentaryView\)\}/);
+  assert.match(page, /commentarySourceInitials/);
   assert.match(page, /ccel\.org\/j\/jfb\/jfb\/JFB/);
   assert.match(page, /wordStudyMode/);
   assert.match(page, /originalLanguageBookCache/);

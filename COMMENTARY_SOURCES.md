@@ -41,19 +41,18 @@ historical-context source. The edition is public domain and is used for
 historical, literary, and interpretive notes.
 
 The historical source is intentionally separated from Matthew Henry in the
-interface. Matthew Henry remains the locally stored devotional/expository
-commentary. JFB is linked chapter-by-chapter to the public-domain
-transcription hosted by CCEL:
+interface. Matthew Henry remains the devotional/expository commentary. JFB is
+stored locally in the same chapter JSON format and shown directly in the
+commentary sidebar:
 
 - Collection overview: https://ccel.org/j/jfb/jfb/JFB00.htm
 - Example book page: https://ccel.org/j/jfb/jfb/JFB01.htm
-- Current app behavior: links to the selected book in the source edition
-- Locally stored JFB text: none
+- Current app behavior: displays the selected chapter in the Historical Context tab
+- Locally stored JFB text: public/commentary/jfb
 
-CCEL states that the expanded electronic edition is in the public domain, so
-the app can link to it directly without re-publishing the transcription. A
-structured local edition can later be connected through the same source view
-without changing the reader interface.
+CCEL states that the expanded electronic edition is in the public domain. The
+local import preserves source attribution and keeps the commentary text,
+verse-range headings, and Scripture references as structured fields.
 
 JFB is text-only in this app. If a later historical source includes maps,
 plates, or diagrams, those should be handled as separate attributed media

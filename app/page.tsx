@@ -128,6 +128,18 @@ function bibleHubBookSlug(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 }
 
+function commentarySourceId(view: CommentaryView) {
+  return view === "historical" ? "jfb" : "mhcc";
+}
+
+function commentarySourceLabel(view: CommentaryView) {
+  return view === "historical" ? "Historical context" : "Commentary";
+}
+
+function commentarySourceInitials(source: CommentarySource) {
+  return source.id === "jfb" ? "JFB" : "MH";
+}
+
 function chapterAudioBase(book: string, chapterNumber: number) {
   return `/audio/${bookSlug(book)}/${chapterNumber}`;
 }
@@ -467,7 +479,7 @@ export default function Home() {
     let ignore = false;
     setCommentaryStatus("loading");
     setCommentaryData(null);
-    fetch(`/commentary/mhcc/${bookSlug(selectedBook.name)}/${chapter}.json`)
+    fetch(`/commentary/${commentarySourceId(commentaryView)}/${bookSlug(selectedBook.name)}/${chapter}.json`)
       .then((response) => {
         if (!response.ok) throw new Error("Commentary unavailable");
         return response.json() as Promise<CommentaryChapter>;
@@ -482,7 +494,7 @@ export default function Home() {
         setCommentaryStatus("error");
       });
     return () => { ignore = true; };
-  }, [selectedBook.name, chapter]);
+  }, [selectedBook.name, chapter, commentaryView]);
 
   useEffect(() => {
     let ignore = false;
@@ -1037,7 +1049,7 @@ export default function Home() {
   const commentaryTokens = useMemo(() => activeCommentaryEntry?.text.split(/(\s+)/) || [], [activeCommentaryEntry]);
 
   useEffect(() => {
-    if (!isReadingCommentary || isCommentaryPaused || commentaryView !== "expository" || commentaryWordIndex === null) return;
+    if (!isReadingCommentary || isCommentaryPaused || commentaryWordIndex === null) return;
     const panel = studyPanelRef.current;
     if (!panel) return;
     const spokenWord = panel.querySelector(".commentary-spoken-word") as HTMLElement | null;
@@ -1051,10 +1063,7 @@ export default function Home() {
     panel.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
   }, [commentaryWordIndex, commentaryView, isCommentaryPaused, isReadingCommentary]);
 
-  const historicalCommentaryBookIndex = books.findIndex((book) => book.name === selectedBook.name) + 1;
-  const historicalCommentaryUrl = historicalCommentaryBookIndex > 0
-    ? `https://ccel.org/j/jfb/jfb/JFB${String(historicalCommentaryBookIndex).padStart(2, "0")}.htm`
-    : "https://ccel.org/j/jfb/jfb/JFB00.htm";
+  const historicalCommentaryUrl = "https://ccel.org/j/jfb/jfb/JFB00.htm";
   const chapterNotes = verses.filter((verse) => Boolean(notes[verseKey(verse.id)]));
   const selectedSectionIds = [...selectedForHighlight].sort((a, b) => a - b);
   const sectionNoteKey = `${passageKey}-section-${selectedSectionIds.join("_")}`;
@@ -1788,7 +1797,10 @@ export default function Home() {
                   <div className="commentary-source-tabs" role="tablist" aria-label="Commentary source">
                     <button
                       className={commentaryView === "expository" ? "active" : ""}
-                      onClick={() => setCommentaryView("expository")}
+                      onClick={() => {
+                        if (isReadingCommentary) stopReading();
+                        setCommentaryView("expository");
+                      }}
                       role="tab"
                       aria-selected={commentaryView === "expository"}
                     >
@@ -1808,7 +1820,7 @@ export default function Home() {
                       <small>JFB</small>
                     </button>
                   </div>
-                  {commentaryView === "historical" ? (
+                  {false && commentaryView === "historical" ? (
                     <div className="commentary-card historical-commentary-card">
                       <div className="commentary-card-top">
                         <span className="card-label">HISTORICAL CONTEXT</span>
@@ -1852,7 +1864,7 @@ export default function Home() {
                     <>
                       <div className="commentary-card">
                         <div className="commentary-card-top">
-                          <span className="card-label">COMMENTARY · {activeCommentaryEntry.heading.toUpperCase()}</span>
+                          <span className="card-label">{commentarySourceLabel(commentaryView).toUpperCase()} · {activeCommentaryEntry.heading.toUpperCase()}</span>
                           <button className={isReadingCommentary ? "active" : ""} onClick={toggleCommentaryReading} aria-label={isReadingCommentary && !isCommentaryPaused ? "Pause commentary" : "Read commentary aloud"}>
                             {isReadingCommentary && !isCommentaryPaused ? "Ⅱ Pause" : "▶ Read aloud"}
                           </button>
@@ -1864,7 +1876,7 @@ export default function Home() {
                           ))}
                         </p>
                         <div className="commentary-author">
-                          <span>MH</span>
+                          <span>{commentarySourceInitials(commentaryData.source)}</span>
                           <div>
                             <strong>{commentaryData.source.author}</strong>
                             <small>{commentaryData.source.title}</small>
