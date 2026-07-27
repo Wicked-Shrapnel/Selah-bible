@@ -145,8 +145,6 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /davidVoice/);
   assert.match(page, /selah-audio-source/);
   assert.match(page, /audioSourcePreference/);
-  assert.match(page, /selah-search-layout/);
-  assert.match(page, /searchLayoutPreference/);
   assert.match(page, /Automatic - David only for now/);
   assert.match(page, /Microsoft David/);
   assert.match(page, /disabled right now/);
@@ -156,7 +154,6 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /settings-window/);
   assert.match(page, /selah-theme/);
   assert.match(page, /themePreference/);
-  assert.match(page, /Sectioned passage/);
   assert.match(page, /Green dark/);
   assert.match(page, /True dark/);
   assert.match(page, /selah-study-panel-width-v1/);
@@ -180,9 +177,10 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /utterance\.onboundary/);
   assert.match(page, /commentary-spoken-word/);
   assert.match(page, /Historical Context/);
-  assert.match(page, /Cambridge Bible for Schools and Colleges/);
+  assert.match(page, /Jamieson-Fausset-Brown Commentary/);
   assert.match(page, /historicalCommentaryUrl/);
-  assert.match(page, /future side-by-side media view/);
+  assert.match(page, /Any future maps, plates, or diagrams should be handled as separate media/);
+  assert.match(page, /ccel\.org\/j\/jfb\/jfb\/JFB/);
   assert.match(page, /wordStudyMode/);
   assert.match(page, /originalLanguageBookCache/);
   assert.match(page, /selectedOriginalEntries/);
@@ -200,8 +198,6 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(styles, /speed-control/);
   assert.match(styles, /bible-search-control/);
   assert.match(styles, /search-results-list/);
-  assert.match(styles, /sectioned-layout/);
-  assert.match(styles, /search-section-card/);
   assert.match(styles, /search-result-card/);
   assert.match(styles, /search-result-text/);
   assert.match(styles, /search-read-aloud/);

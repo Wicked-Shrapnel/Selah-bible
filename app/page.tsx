@@ -11,7 +11,6 @@ type CommentaryView = "expository" | "historical";
 type HighlightColor = "gold" | "sage" | "blue" | "rose";
 type ThemePreference = "system" | "light" | "dark" | "true-dark";
 type AudioSourcePreference = "auto" | "official" | "david";
-type SearchLayoutPreference = "list" | "sectioned";
 type LexiconEntry = { word: string; transliteration: string; pronunciation: string; spoken: string; number: string; meaning: string; lang: "he-IL" | "el-GR" };
 type OriginalWordToken = { text: string; strongs?: string[] };
 type OriginalLanguageBook = { source: string; verses: Record<string, OriginalWordToken[]> };
@@ -38,7 +37,6 @@ type BibleSourceVerse = { verse: string; text: string };
 type BibleSourceChapter = { chapter: string; verses: BibleSourceVerse[] };
 type BibleSourceBook = { book: string; chapters: BibleSourceChapter[] };
 type BibleSearchResult = { book: Book; chapter: number; verse: number; reference: string; text: string; rank: number; kind: "match" | "suggestion" };
-type BibleSearchSection = { key: string; book: Book; chapter: number; verseStart: number; verseEnd: number; kind: "match" | "suggestion"; items: BibleSearchResult[] };
 
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const MIN_STUDY_PANEL_WIDTH = 380;
@@ -256,7 +254,6 @@ export default function Home() {
   const [audioDockCollapsed, setAudioDockCollapsed] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
   const [audioSourcePreference, setAudioSourcePreference] = useState<AudioSourcePreference>("auto");
-  const [searchLayoutPreference, setSearchLayoutPreference] = useState<SearchLayoutPreference>("list");
   const [studyPanelWidth, setStudyPanelWidth] = useState(MIN_STUDY_PANEL_WIDTH);
   const [isResizingStudy, setIsResizingStudy] = useState(false);
   const [readOriginalDefinition, setReadOriginalDefinition] = useState(false);
@@ -337,7 +334,6 @@ export default function Home() {
       const savedDockCollapsed = localStorage.getItem("selah-audio-dock-collapsed");
       const savedTheme = localStorage.getItem("selah-theme") as ThemePreference | null;
       const savedAudioSource = localStorage.getItem("selah-audio-source") as AudioSourcePreference | null;
-      const savedSearchLayout = localStorage.getItem("selah-search-layout") as SearchLayoutPreference | null;
       const savedOriginalDefinition = localStorage.getItem("selah-read-original-definition");
       const savedStudyPanelWidth = Number(localStorage.getItem(STUDY_PANEL_WIDTH_STORAGE_KEY));
       if (savedHighlights) {
@@ -350,9 +346,6 @@ export default function Home() {
       if (savedTheme && ["system", "light", "dark", "true-dark"].includes(savedTheme)) setThemePreference(savedTheme);
       if (savedAudioSource && ["auto", "official", "david"].includes(savedAudioSource)) {
         setAudioSourcePreference(savedAudioSource === "official" && !OFFICIAL_AUDIO_ENABLED ? "david" : savedAudioSource);
-      }
-      if (savedSearchLayout && ["list", "sectioned", "spread"].includes(savedSearchLayout)) {
-        setSearchLayoutPreference(savedSearchLayout === "spread" ? "sectioned" : savedSearchLayout);
       }
       if (savedOriginalDefinition === "true") setReadOriginalDefinition(true);
       if (Number.isFinite(savedStudyPanelWidth)) setStudyPanelWidth(clampNumber(savedStudyPanelWidth, MIN_STUDY_PANEL_WIDTH, MAX_STUDY_PANEL_WIDTH));
@@ -1058,7 +1051,10 @@ export default function Home() {
     panel.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
   }, [commentaryWordIndex, commentaryView, isCommentaryPaused, isReadingCommentary]);
 
-  const historicalCommentaryUrl = `https://biblehub.com/commentaries/cambridge/${bibleHubBookSlug(selectedBook.name)}/${chapter}.htm`;
+  const historicalCommentaryBookIndex = books.findIndex((book) => book.name === selectedBook.name) + 1;
+  const historicalCommentaryUrl = historicalCommentaryBookIndex > 0
+    ? `https://ccel.org/j/jfb/jfb/JFB${String(historicalCommentaryBookIndex).padStart(2, "0")}.htm`
+    : "https://ccel.org/j/jfb/jfb/JFB00.htm";
   const chapterNotes = verses.filter((verse) => Boolean(notes[verseKey(verse.id)]));
   const selectedSectionIds = [...selectedForHighlight].sort((a, b) => a - b);
   const sectionNoteKey = `${passageKey}-section-${selectedSectionIds.join("_")}`;
@@ -1247,33 +1243,6 @@ export default function Home() {
       return <span key={`${result.reference}-${index}`} className={className}>{token}</span>;
     });
   };
-
-  const searchSections = useMemo(() => {
-    const sections: BibleSearchSection[] = [];
-    searchResults.forEach((result) => {
-      const previous = sections.at(-1);
-      const canAppend = previous
-        && previous.book.name === result.book.name
-        && previous.chapter === result.chapter
-        && previous.kind === result.kind
-        && result.verse - previous.verseEnd <= 2;
-      if (canAppend) {
-        previous.items.push(result);
-        previous.verseEnd = result.verse;
-        return;
-      }
-      sections.push({
-        key: `${result.book.name}-${result.chapter}-${result.verse}-${result.kind}`,
-        book: result.book,
-        chapter: result.chapter,
-        verseStart: result.verse,
-        verseEnd: result.verse,
-        kind: result.kind,
-        items: [result],
-      });
-    });
-    return sections;
-  }, [searchResults]);
 
   const openBookmarkedChapter = () => {
     if (!bookmark) return;
@@ -1484,18 +1453,6 @@ export default function Home() {
                     <option value="true-dark">True dark</option>
                   </select>
                 </label>
-                <label>
-                  <span>Search view</span>
-                  <select value={searchLayoutPreference} onChange={(event) => {
-                    const nextLayout = event.target.value as SearchLayoutPreference;
-                    setSearchLayoutPreference(nextLayout);
-                    localStorage.setItem("selah-search-layout", nextLayout);
-                  }}>
-                    <option value="list">Verse list</option>
-                    <option value="sectioned">Sectioned passage</option>
-                  </select>
-                </label>
-                <p className="settings-help">Sectioned passage groups nearby search hits into readable blocks the way a physical Bible is usually broken into passages.</p>
               </div>
               <div className="settings-card">
                 <div className="settings-card-heading">
@@ -1617,39 +1574,9 @@ export default function Home() {
               })()}
               {searchStatus === "error" && "Search is unavailable right now."}
             </div>
-            <div className={`search-results-list ${searchLayoutPreference === "sectioned" ? "sectioned-layout" : "list-layout"}`}>
+            <div className="search-results-list">
               {searchStatus === "ready" && searchResults.length === 0 && <p>No verses found. Try a shorter word or phrase.</p>}
-              {searchLayoutPreference === "sectioned" ? searchSections.map((section) => (
-                <section key={section.key} className={`search-section-card ${section.kind === "suggestion" ? "search-suggestion" : ""}`} aria-label={`${section.book.name} ${section.chapter}:${section.verseStart}${section.verseEnd !== section.verseStart ? `-${section.verseEnd}` : ""}`}>
-                  <header className="search-section-heading">
-                    <strong>{section.book.name} {section.chapter}:{section.verseStart}{section.verseEnd !== section.verseStart ? `-${section.verseEnd}` : ""}</strong>
-                    {section.kind === "suggestion" && <em>Related suggestion</em>}
-                  </header>
-                  <div className="search-section-body">
-                    {section.items.map((result) => (
-                      <div key={`${result.reference}-${result.rank}-${result.kind}`} className="search-section-verse">
-                        <button
-                          type="button"
-                          className="search-section-jump"
-                          onClick={() => openSearchResult(result)}
-                          aria-label={`Open ${result.reference}`}
-                        >
-                          <span className="search-verse-number">{result.verse}</span>
-                          <span className="search-result-text">{renderSearchVerseText(result)}</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="search-read-aloud"
-                          onClick={() => void readSearchResult(result)}
-                          aria-label={`Read ${result.reference} aloud`}
-                        >
-                          Read aloud
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )) : searchResults.map((result) => (
+              {searchResults.map((result) => (
                 <div
                   key={`${result.reference}-${result.rank}-${result.kind}`}
                   className={`search-result-card ${result.kind === "suggestion" ? "search-suggestion" : ""}`}
@@ -1878,7 +1805,7 @@ export default function Home() {
                       aria-selected={commentaryView === "historical"}
                     >
                       <span>Historical Context</span>
-                      <small>Cambridge</small>
+                      <small>JFB</small>
                     </button>
                   </div>
                   {commentaryView === "historical" ? (
@@ -1887,32 +1814,32 @@ export default function Home() {
                         <span className="card-label">HISTORICAL CONTEXT</span>
                         <span className="historical-badge">Historically based</span>
                       </div>
-                      <h2>Cambridge Bible for Schools and Colleges</h2>
+                      <h2>Jamieson-Fausset-Brown Commentary</h2>
                       <p>
-                        Scholarly background for {selectedBook.name} {chapter}, with historical setting,
-                        literary analysis, original-language observations, outlines, and verse-by-verse notes.
+                        Scholarly background for {selectedBook.name}, with historical setting, literary analysis,
+                        original-language observations, outlines, and verse-by-verse notes.
                       </p>
                       <div className="historical-source-note">
                         <strong>Read at the authorized source</strong>
                         <span>
-                          The available digital transcription is hosted by Bible Hub courtesy of BibleSupport.
-                          It opens separately so the app does not re-publish text licensed to another host.
+                          The public-domain transcription is hosted by CCEL. It opens separately so the app
+                          does not re-publish text licensed to another host.
                         </span>
                       </div>
                       <a className="historical-open-button" href={historicalCommentaryUrl} target="_blank" rel="noreferrer">
-                        Open {selectedBook.name} {chapter} historical commentary ↗
+                        Open {selectedBook.name} in JFB ↗
                       </a>
                       <div className="commentary-author">
-                        <span>CB</span>
+                        <span>JFB</span>
                         <div>
-                          <strong>Cambridge Bible contributors</strong>
-                          <small>Cambridge University Press · 1878–1922</small>
+                          <strong>Jamieson, Fausset &amp; Brown</strong>
+                          <small>Commentary Critical and Explanatory on the Whole Bible · 1871</small>
                         </div>
                       </div>
                       <div className="commentary-media-plan">
                         <div>
-                          <strong>Maps, plates &amp; diagrams</strong>
-                          <span>Reserved for a future side-by-side media view.</span>
+                          <strong>Text-only historical notes</strong>
+                          <span>Any future maps, plates, or diagrams should be handled as separate media.</span>
                         </div>
                         <small>PLANNED</small>
                       </div>
