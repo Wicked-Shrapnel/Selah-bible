@@ -1534,7 +1534,7 @@ export default function Home() {
       {searchPanelOpen && (
         <section className="search-library" aria-modal="true" role="dialog" aria-label="Bible search results">
           <div className="search-library-heading">
-            <div><span>BIBLE SEARCH</span><strong>{searchQuery.trim() ? `Results for "${searchQuery.trim()}"` : "Search the Bible"}</strong></div>
+            <div><span>BIBLE SEARCH</span><strong>Search Results</strong></div>
             <button onClick={() => setSearchPanelOpen(false)} aria-label="Close Bible search">X</button>
           </div>
           <div className="search-library-body">
@@ -1562,12 +1562,13 @@ export default function Home() {
               {searchStatus === "ready" && searchResults.length === 0 && <p>No verses found. Try a shorter word or phrase.</p>}
               {searchResults.map((result) => (
                   <button key={`${result.reference}-${result.rank}-${result.kind}`} className={result.kind === "suggestion" ? "search-suggestion" : ""} onClick={() => openSearchResult(result)}>
-                    <strong>{result.reference}</strong>
-                    <span className="search-result-text">
+                    <div className="search-result-copy">
+                      <strong>{result.reference}</strong>
+                      <span className="search-result-text">
                       {renderSearchVerseText(result)}
                       {result.kind === "suggestion" && <em>Related suggestion</em>}
-                    </span>
-                    <b>Jump</b>
+                      </span>
+                    </div>
                   </button>
               ))}
             </div>
