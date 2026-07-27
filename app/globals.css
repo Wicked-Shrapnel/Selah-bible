@@ -339,7 +339,7 @@ button, select { cursor: pointer; }
 .commentary-card p { margin: 0; color: #575b55; font: 14px/1.62 Georgia, serif; }
 .commentary-card p.commentary-reading { padding-left: 10px; border-left: 2px solid #b8c9bf; }
 .commentary-card p span { border-radius: 3px; transition: color .12s ease, background-color .12s ease; }
-.commentary-card p .commentary-passage-link { border-bottom: 1px dotted #7b9b8b; color: var(--sage); font-weight: 700; text-decoration: none; }
+.commentary-card p .commentary-passage-link { appearance: none; display: inline; padding: 0; border: 0; border-bottom: 1px dotted #7b9b8b; color: var(--sage); background: transparent; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
 .commentary-card p .commentary-passage-link:hover { color: var(--sage-dark); border-bottom-style: solid; }
 .commentary-card p .commentary-spoken-word { color: #173d30; background: #dce9e1; box-shadow: 0 0 0 2px #dce9e1; }
 .commentary-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -380,8 +380,9 @@ button, select { cursor: pointer; }
 .cross-references span { color: var(--sage); font: 700 12px Georgia, serif; }
 .cross-references small { margin-top: 4px; color: var(--muted); font: italic 10px Georgia, serif; }
 .reference-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.reference-chips span, .reference-chips a { padding: 6px 8px; border: 1px solid #cfd9d3; border-radius: 999px; color: var(--sage); background: var(--sage-soft); font: 700 10px Georgia, serif; text-decoration: none; }
-.reference-chips a:hover { border-color: #9fb5aa; color: var(--sage-dark); background: var(--white); }
+.reference-chips span, .reference-chips a, .reference-chips button { padding: 6px 8px; border: 1px solid #cfd9d3; border-radius: 999px; color: var(--sage); background: var(--sage-soft); font: 700 10px Georgia, serif; text-decoration: none; }
+.reference-chips button { cursor: pointer; }
+.reference-chips a:hover, .reference-chips button:hover { border-color: #9fb5aa; color: var(--sage-dark); background: var(--white); }
 .chapter-commentary-list { margin-top: 18px; border-top: 1px solid var(--line); }
 .chapter-commentary-list summary { padding: 14px 0; color: var(--sage); cursor: pointer; font-size: 10px; font-weight: 800; }
 .chapter-commentary-list button { display: block; width: 100%; padding: 11px 0; text-align: left; border: 0; border-top: 1px solid var(--line); background: transparent; }
