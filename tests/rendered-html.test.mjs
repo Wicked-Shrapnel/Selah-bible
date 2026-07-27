@@ -183,7 +183,8 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /commentaryReferenceHref/);
   assert.match(page, /commentaryReferenceLinks/);
   assert.match(page, /commentary-passage-link/);
-  assert.match(page, /target="_blank"/);
+  assert.match(page, /commentaryReferenceTab/);
+  assert.match(page, /closeCommentaryReference/);
   assert.match(page, /studyPanelRef/);
   assert.match(page, /panel\.scrollTo\(\{ top: Math\.max\(0, targetTop\), behavior: "smooth" \}\)/);
   assert.match(page, /Read commentary aloud/);
@@ -222,6 +223,7 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(styles, /search-read-aloud/);
   assert.match(styles, /search-red-letter/);
   assert.match(styles, /commentary-passage-link/);
+  assert.match(styles, /commentary-reference-tab/);
   assert.match(styles, /search-suggestion/);
   assert.match(styles, /\.study-panel \{ position: sticky; top: 72px;/);
 });

@@ -20,6 +20,11 @@ type SavedAudioManifest = { chapters: string[]; chapterFiles?: Record<string, st
 type CommentaryReference = { osis: string; label: string };
 type CommentaryEntry = { anchorVerse: number; verseStart: number; verseEnd: number; heading: string; text: string; references: CommentaryReference[] };
 type CommentaryReferenceLink = CommentaryReference & { href: string; start: number; end: number };
+type CommentaryReferenceTab = {
+  reference: CommentaryReference;
+  passage: { book: Book; chapter: number; verse: number };
+  previous: { book: Book; chapter: number; verse: number };
+};
 type CommentarySource = {
   id: string;
   title: string;
@@ -310,6 +315,10 @@ function commentaryReferenceLinks(text: string, references: CommentaryReference[
     .sort((a, b) => a.start - b.start);
 }
 
+function samePassage(a: { book: Book; chapter: number; verse: number }, b: { book: Book; chapter: number; verse: number }) {
+  return a.book.name === b.book.name && a.chapter === b.chapter && a.verse === b.verse;
+}
+
 function normalizeSearchText(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -429,6 +438,7 @@ export default function Home() {
   const [readOriginalDefinition, setReadOriginalDefinition] = useState(false);
   const [commentaryData, setCommentaryData] = useState<CommentaryChapter | null>(null);
   const [commentaryStatus, setCommentaryStatus] = useState<"loading" | "ready" | "error" | "linked">("loading");
+  const [commentaryReferenceTab, setCommentaryReferenceTab] = useState<CommentaryReferenceTab | null>(null);
   const [bookmark, setBookmark] = useState<SavedPlace | null>(null);
   const [savedPanelOpen, setSavedPanelOpen] = useState(false);
   const [savedViewTab, setSavedViewTab] = useState<"highlights" | "notes">("highlights");
@@ -661,9 +671,15 @@ export default function Home() {
       .catch(() => {
         if (ignore) return;
         setCommentaryStatus("error");
-      });
+    });
     return () => { ignore = true; };
   }, [selectedBook.name, chapter, commentaryView]);
+
+  useEffect(() => {
+    if (!commentaryReferenceTab) return;
+    const stillOnReferencedChapter = commentaryReferenceTab.passage.book.name === selectedBook.name && commentaryReferenceTab.passage.chapter === chapter;
+    if (!stillOnReferencedChapter) setCommentaryReferenceTab(null);
+  }, [commentaryReferenceTab, selectedBook.name, chapter]);
 
   useEffect(() => {
     let ignore = false;
@@ -1462,6 +1478,42 @@ export default function Home() {
     window.speechSynthesis.speak(utterance);
   };
 
+  const openCommentaryReference = (reference: CommentaryReference) => {
+    const passage = parsePassageReference(reference.osis) || parsePassageReference(reference.label);
+    if (!passage) return;
+    const previous = { book: selectedBook, chapter, verse: selectedVerse };
+    setCommentaryReferenceTab({ reference, passage, previous });
+    if (samePassage(previous, passage)) return;
+    pendingSavedVerse.current = passage.verse;
+    setSelectedBook(passage.book);
+    setChapter(passage.chapter);
+    setSelectedVerse(passage.verse);
+    window.history.pushState({}, "", passageHref(passage.book, passage.chapter, passage.verse));
+    if (passage.book.name === selectedBook.name && passage.chapter === chapter) {
+      pendingSavedVerse.current = null;
+      window.setTimeout(() => {
+        document.getElementById(`verse-${passage.verse}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 0);
+    }
+  };
+
+  const closeCommentaryReference = () => {
+    if (!commentaryReferenceTab) return;
+    const previous = commentaryReferenceTab.previous;
+    const isSameChapter = previous.book.name === selectedBook.name && previous.chapter === chapter;
+    setCommentaryReferenceTab(null);
+    pendingSavedVerse.current = previous.verse;
+    setSelectedBook(previous.book);
+    setChapter(previous.chapter);
+    setSelectedVerse(previous.verse);
+    window.history.replaceState({}, "", passageHref(previous.book, previous.chapter, previous.verse));
+    if (isSameChapter) {
+      window.setTimeout(() => {
+        document.getElementById(`verse-${previous.verse}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 0);
+    }
+  };
+
   const toggleCommentaryReading = () => {
     if (!activeCommentaryEntry || !("speechSynthesis" in window)) return;
     if (isReadingCommentary) {
@@ -1516,14 +1568,16 @@ export default function Home() {
 
     const flushLink = () => {
       if (!activeLink) return;
+      const reference = activeLink.reference;
+      const href = activeLink.href;
+      const label = activeLink.label;
       rendered.push(
         <a
-          key={`commentary-reference-${activeLink.start}-${activeLink.href}`}
+          key={`commentary-reference-${activeLink.start}-${href}`}
           className="commentary-passage-link"
-          href={activeLink.href}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={`Open ${activeLink.label} in a new tab`}
+          href={href}
+          onClick={(event) => { event.preventDefault(); openCommentaryReference(reference); }}
+          aria-label={`Open ${label} in this page`}
         >
           {activeLinkNodes}
         </a>,
@@ -2015,6 +2069,16 @@ export default function Home() {
               {studyTab === "commentary" ? (
                 <div className="study-content">
                   <div className="study-reference"><span>{selected?.reference || `${selectedBook.name} ${chapter}`}</span><small>Public domain</small></div>
+                  {commentaryReferenceTab && (
+                    <div className="commentary-reference-tab">
+                      <div>
+                        <span>REFERENCE PASSAGE</span>
+                        <strong>{selected?.reference || `${selectedBook.name} ${chapter}`}</strong>
+                        <small>Opened from {commentaryReferenceTab.reference.label}</small>
+                      </div>
+                      <button onClick={closeCommentaryReference} aria-label="Close referenced passage">×</button>
+                    </div>
+                  )}
                   <div className="commentary-source-tabs" role="tablist" aria-label="Commentary source">
                     <button
                       className={commentaryView === "expository" ? "active" : ""}
@@ -2124,7 +2188,7 @@ export default function Home() {
                             {activeCommentaryEntry.references.map((reference, index) => {
                               const href = commentaryReferenceHref(reference);
                               return href ? (
-                                <a key={`${reference.osis}-${index}`} href={href} target="_blank" rel="noreferrer" aria-label={`Open ${reference.label} in a new tab`}>{reference.label}</a>
+                                <a key={`${reference.osis}-${index}`} href={href} onClick={(event) => { event.preventDefault(); openCommentaryReference(reference); }} aria-label={`Open ${reference.label} in this page`}>{reference.label}</a>
                               ) : <span key={`${reference.osis}-${index}`}>{reference.label}</span>;
                             })}
                           </div>

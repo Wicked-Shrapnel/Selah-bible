@@ -327,6 +327,12 @@ button, select { cursor: pointer; }
 .study-reference span { font: 700 18px Georgia, serif; }
 .study-reference button { border: 0; background: transparent; color: var(--muted); }
 .study-reference small { color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.commentary-reference-tab { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 13px; padding: 11px 12px; border: 1px solid #d8ddd6; border-radius: 10px; background: rgba(243,247,244,.9); }
+.commentary-reference-tab span { display: block; color: #8b7648; font-size: 8px; font-weight: 850; letter-spacing: .16em; text-transform: uppercase; }
+.commentary-reference-tab strong { display: block; margin-top: 3px; color: var(--ink); font: 700 13px Georgia, serif; }
+.commentary-reference-tab small { display: block; margin-top: 3px; color: var(--muted); font: 10px/1.35 Georgia, serif; }
+.commentary-reference-tab button { flex: 0 0 auto; width: 29px; height: 29px; padding: 0; border: 1px solid #d0d7d0; border-radius: 50%; color: var(--muted); background: var(--white); font-size: 18px; line-height: 1; }
+.commentary-reference-tab button:hover { color: var(--sage-dark); border-color: #a9bfb1; }
 .commentary-card { padding: 21px; border: 1px solid #dedbd2; border-radius: 12px; background: var(--white); box-shadow: 0 6px 24px rgba(48,43,32,.04); }
 .card-label { color: #a28b4f; font-size: 8px; font-weight: 850; letter-spacing: .17em; }
 .commentary-card h2 { margin: 9px 0 11px; font: 600 21px/1.22 Georgia, serif; }
@@ -538,6 +544,9 @@ button, select { cursor: pointer; }
 :root[data-theme="dark"] .word-study-control strong { color: #c7d0c9; }
 :root[data-theme="dark"] .commentary-card p .commentary-spoken-word { color: #f0f6f1; background: #345344; box-shadow: 0 0 0 2px #345344; }
 :root[data-theme="dark"] .commentary-card p .commentary-passage-link { color: #b9d0c3; border-bottom-color: #789889; }
+:root[data-theme="dark"] .commentary-reference-tab { border-color: #38433c; background: rgba(33,40,35,.9); }
+:root[data-theme="dark"] .commentary-reference-tab strong { color: #e3ece5; }
+:root[data-theme="dark"] .commentary-reference-tab button { border-color: #4a564f; color: #d6dfd8; background: #27312a; }
 :root[data-theme="dark"] .commentary-source-tabs,
 :root[data-theme="dark"] .commentary-state,
 :root[data-theme="dark"] .word-study-control,
@@ -740,6 +749,9 @@ button, select { cursor: pointer; }
 :root[data-theme="true-dark"] .word-study-control strong { color: #d8d0bf; }
 :root[data-theme="true-dark"] .commentary-card p .commentary-spoken-word { color: #f8f0de; background: #2e3a3f; box-shadow: 0 0 0 2px #2e3a3f; }
 :root[data-theme="true-dark"] .commentary-card p .commentary-passage-link { color: #c3d5cb; border-bottom-color: #6f8d80; }
+:root[data-theme="true-dark"] .commentary-reference-tab { border-color: #31383d; background: rgba(22,26,30,.92); }
+:root[data-theme="true-dark"] .commentary-reference-tab strong { color: #edf0eb; }
+:root[data-theme="true-dark"] .commentary-reference-tab button { border-color: #434d53; color: #dee4df; background: #262c31; }
 :root[data-theme="true-dark"] .commentary-source-tabs,
 :root[data-theme="true-dark"] .commentary-state,
 :root[data-theme="true-dark"] .word-study-control,
