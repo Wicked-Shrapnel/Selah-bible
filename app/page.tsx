@@ -1264,6 +1264,19 @@ export default function Home() {
     window.speechSynthesis.speak(utterance);
   };
 
+  const readSearchResult = (result: BibleSearchResult) => {
+    if (!result.text || !("speechSynthesis" in window)) return;
+    stopReading();
+    const utterance = new SpeechSynthesisUtterance(`${result.reference}. ${result.text}`);
+    utterance.rate = rate;
+    utterance.voice = voices.find((voice) => voice.name === voiceName) || bestVoice(voices) || null;
+    utterance.onend = () => setIsReading(false);
+    utterance.onerror = () => setIsReading(false);
+    setIsReading(true);
+    setIsPaused(false);
+    window.speechSynthesis.speak(utterance);
+  };
+
   const toggleCommentaryReading = () => {
     if (!activeCommentaryEntry || !("speechSynthesis" in window)) return;
     if (isReadingCommentary) {
@@ -1561,15 +1574,30 @@ export default function Home() {
             <div className="search-results-list">
               {searchStatus === "ready" && searchResults.length === 0 && <p>No verses found. Try a shorter word or phrase.</p>}
               {searchResults.map((result) => (
-                  <button key={`${result.reference}-${result.rank}-${result.kind}`} className={result.kind === "suggestion" ? "search-suggestion" : ""} onClick={() => openSearchResult(result)}>
-                    <div className="search-result-copy">
-                      <strong>{result.reference}</strong>
-                      <span className="search-result-text">
+                <div
+                  key={`${result.reference}-${result.rank}-${result.kind}`}
+                  className={`search-result-card ${result.kind === "suggestion" ? "search-suggestion" : ""}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openSearchResult(result)}
+                  onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") openSearchResult(result); }}
+                >
+                  <div className="search-result-copy">
+                    <strong>{result.reference}</strong>
+                    <span className="search-result-text">
                       {renderSearchVerseText(result)}
                       {result.kind === "suggestion" && <em>Related suggestion</em>}
-                      </span>
-                    </div>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="search-read-aloud"
+                    onClick={(event) => { event.stopPropagation(); void readSearchResult(result); }}
+                    aria-label={`Read ${result.reference} aloud`}
+                  >
+                    Read aloud
                   </button>
+                </div>
               ))}
             </div>
           </div>
