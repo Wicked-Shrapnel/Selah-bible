@@ -10,6 +10,7 @@ type StudyTab = "commentary" | "lexicon" | "notes";
 type CommentaryView = "expository" | "historical";
 type HighlightColor = "gold" | "sage" | "blue" | "rose";
 type ThemePreference = "system" | "light" | "dark" | "true-dark";
+type AudioSourcePreference = "auto" | "official" | "david";
 type LexiconEntry = { word: string; transliteration: string; pronunciation: string; spoken: string; number: string; meaning: string; lang: "he-IL" | "el-GR" };
 type OriginalWordToken = { text: string; strongs?: string[] };
 type OriginalLanguageBook = { source: string; verses: Record<string, OriginalWordToken[]> };
@@ -210,6 +211,7 @@ export default function Home() {
   const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
   const [audioDockCollapsed, setAudioDockCollapsed] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
+  const [audioSourcePreference, setAudioSourcePreference] = useState<AudioSourcePreference>("auto");
   const [studyPanelWidth, setStudyPanelWidth] = useState(MIN_STUDY_PANEL_WIDTH);
   const [isResizingStudy, setIsResizingStudy] = useState(false);
   const [readOriginalDefinition, setReadOriginalDefinition] = useState(false);
@@ -241,6 +243,7 @@ export default function Home() {
   const chapterAudioPrefix = chapterAudioBase(selectedBook.name, chapter);
   const chapterMp3Url = chapterAudioFiles[chapterAudioKey] || chapterMp3AudioPath(selectedBook.name, chapter);
   const hasChapterMp3Audio = Boolean(chapterAudioFiles[chapterAudioKey]);
+  const shouldUseChapterMp3Audio = hasChapterMp3Audio && audioSourcePreference !== "david";
   const selected = verses.find((verse) => verse.id === selectedVerse) || verses[0];
   const chapterAudioProgress = useMemo(() => {
     const counts = verses.map((verse) => verseWordCount(verse.text));
@@ -283,6 +286,7 @@ export default function Home() {
       const savedHighlightColor = localStorage.getItem("selah-highlight-color") as HighlightColor | null;
       const savedDockCollapsed = localStorage.getItem("selah-audio-dock-collapsed");
       const savedTheme = localStorage.getItem("selah-theme") as ThemePreference | null;
+      const savedAudioSource = localStorage.getItem("selah-audio-source") as AudioSourcePreference | null;
       const savedOriginalDefinition = localStorage.getItem("selah-read-original-definition");
       const savedStudyPanelWidth = Number(localStorage.getItem(STUDY_PANEL_WIDTH_STORAGE_KEY));
       if (savedHighlights) {
@@ -293,6 +297,7 @@ export default function Home() {
       if (savedHighlightColor && ["gold", "sage", "blue", "rose"].includes(savedHighlightColor)) setPreferredHighlightColor(savedHighlightColor);
       if (savedDockCollapsed === "true") setAudioDockCollapsed(true);
       if (savedTheme && ["system", "light", "dark", "true-dark"].includes(savedTheme)) setThemePreference(savedTheme);
+      if (savedAudioSource && ["auto", "official", "david"].includes(savedAudioSource)) setAudioSourcePreference(savedAudioSource);
       if (savedOriginalDefinition === "true") setReadOriginalDefinition(true);
       if (Number.isFinite(savedStudyPanelWidth)) setStudyPanelWidth(clampNumber(savedStudyPanelWidth, MIN_STUDY_PANEL_WIDTH, MAX_STUDY_PANEL_WIDTH));
       if (savedPlace) {
@@ -681,7 +686,7 @@ export default function Home() {
     setIsReading(true);
     setIsPaused(false);
     const index = Math.max(0, verses.findIndex((verse) => verse.id === verseId));
-    if (hasChapterMp3Audio) {
+    if (shouldUseChapterMp3Audio) {
       void playSavedChapterAudio(index, session);
       return;
     }
@@ -706,7 +711,7 @@ export default function Home() {
     cancelled.current = false;
     setIsReading(true);
     setIsPaused(false);
-    if (hasChapterMp3Audio) void playSavedChapterAudio(index, session);
+    if (shouldUseChapterMp3Audio) void playSavedChapterAudio(index, session);
     else if (savedAudioChapters.has(chapterAudioKey)) void playSavedVerse(index, false, session);
     else playBrowserVerse(index, session);
   };
@@ -1207,17 +1212,29 @@ export default function Home() {
                 <span>AUDIO</span>
                 <strong>Read aloud source</strong>
               </div>
+              <label>
+                <span>Source</span>
+                <select value={audioSourcePreference} onChange={(event) => {
+                  const nextSource = event.target.value as AudioSourcePreference;
+                  setAudioSourcePreference(nextSource);
+                  localStorage.setItem("selah-audio-source", nextSource);
+                }}>
+                  <option value="auto">Automatic - official audio first</option>
+                  <option value="official">Official audio Bible</option>
+                  <option value="david">Microsoft David</option>
+                </select>
+              </label>
               <div className="audio-source-summary">
                 <span>Primary</span>
-                <strong>{hasChapterMp3Audio ? "Official audio Bible" : "Official audio Bible unavailable"}</strong>
-                <p>{hasChapterMp3Audio ? "Selah will play the imported KJV chapter MP3 for this chapter." : "Add the local audio files to use the official KJV chapter recording here."}</p>
+                <strong>{shouldUseChapterMp3Audio ? "Official audio Bible" : audioSourcePreference === "david" ? "Microsoft David selected" : "Official audio Bible unavailable"}</strong>
+                <p>{shouldUseChapterMp3Audio ? "Selah will play the imported KJV chapter MP3 for this chapter." : audioSourcePreference === "david" ? "Selah will use David even when an official chapter recording is available." : "Add the local audio files to use the official KJV chapter recording here."}</p>
               </div>
               <div className="audio-source-summary">
                 <span>Fallback</span>
                 <strong>{davidFallbackVoice ? davidFallbackVoice.name : "Microsoft David"}</strong>
                 <p>All browser-generated read aloud is limited to David. Other installed or cloud voices are no longer shown.</p>
               </div>
-              <label><span>Speed</span><input type="range" min="0.7" max="1.25" step="0.05" value={rate} onChange={(event) => setRate(Number(event.target.value))} /><strong>{rate.toFixed(2)}x</strong></label>
+              <label className="speed-control"><span>Speed</span><input type="range" min="0.7" max="1.25" step="0.05" value={rate} onChange={(event) => setRate(Number(event.target.value))} /><strong>{rate.toFixed(2)}x</strong></label>
             </div>
             <div className="settings-side-stack">
               <div className="settings-card">
