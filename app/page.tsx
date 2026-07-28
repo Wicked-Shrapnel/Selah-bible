@@ -55,14 +55,35 @@ type BibleSourceVerse = { verse: string; text: string };
 type BibleSourceChapter = { chapter: string; verses: BibleSourceVerse[] };
 type BibleSourceBook = { book: string; chapters: BibleSourceChapter[] };
 type BibleSearchResult = { book: Book; chapter: number; verse: number; reference: string; text: string; rank: number; kind: "match" | "suggestion" };
+type UpdateStatus = "idle" | "checking" | "current" | "available" | "error";
+type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string };
 
+const APP_VERSION = "2.0.0";
+const APP_VERSION_MANIFEST_URL = "/app-version.json";
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const MIN_STUDY_PANEL_WIDTH = 380;
 const MAX_STUDY_PANEL_WIDTH = 680;
 const OFFICIAL_AUDIO_ENABLED = false;
+const highlightSwatchColors: Record<HighlightColor, string> = {
+  gold: "#e3c15d",
+  sage: "#8eb49a",
+  blue: "#8eb9d3",
+  rose: "#d99a95",
+};
 
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+function compareVersions(left: string, right: string) {
+  const leftParts = left.split(/[.-]/).map((part) => Number.parseInt(part, 10) || 0);
+  const rightParts = right.split(/[.-]/).map((part) => Number.parseInt(part, 10) || 0);
+  const length = Math.max(leftParts.length, rightParts.length);
+  for (let index = 0; index < length; index += 1) {
+    const difference = (leftParts[index] || 0) - (rightParts[index] || 0);
+    if (difference !== 0) return difference;
+  }
+  return 0;
 }
 
 const books: Book[] = [
@@ -520,6 +541,10 @@ export default function Home() {
   const [isReadingCommentary, setIsReadingCommentary] = useState(false);
   const [isCommentaryPaused, setIsCommentaryPaused] = useState(false);
   const [commentaryWordIndex, setCommentaryWordIndex] = useState<number | null>(null);
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
+  const [latestAppVersion, setLatestAppVersion] = useState(APP_VERSION);
+  const [updateReleaseUrl, setUpdateReleaseUrl] = useState("");
+  const [updateMessage, setUpdateMessage] = useState("Ready to check for a newer Selah build.");
   const cancelled = useRef(false);
   const activeAudio = useRef<HTMLAudioElement | null>(null);
   const syncedAudioVerse = useRef<number | null>(null);
@@ -694,6 +719,56 @@ export default function Home() {
     document.addEventListener("pointerdown", closeMenusOnOutsideClick);
     return () => document.removeEventListener("pointerdown", closeMenusOnOutsideClick);
   }, [picker, searchExpanded]);
+
+  const snapshotSavedLibrary = () => {
+    const keys = [
+      "selah-highlights-v2",
+      "selah-notes-v2",
+      "selah-reading-place-v1",
+      "selah-highlight-color",
+      "selah-audio-dock-collapsed",
+      "selah-theme",
+      "selah-audio-source",
+      "selah-read-original-definition",
+      STUDY_PANEL_WIDTH_STORAGE_KEY,
+    ];
+    const saved: Record<string, string> = {};
+    keys.forEach((key) => {
+      const value = localStorage.getItem(key);
+      if (value !== null) saved[key] = value;
+    });
+    localStorage.setItem("selah-update-backup-v1", JSON.stringify({ createdAt: new Date().toISOString(), version: APP_VERSION, saved }));
+  };
+
+  const checkForAppUpdate = async () => {
+    setUpdateStatus("checking");
+    setUpdateMessage("Checking for the latest Selah build...");
+    try {
+      const response = await fetch(`${APP_VERSION_MANIFEST_URL}?t=${Date.now()}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("Version manifest unavailable");
+      const manifest = await response.json() as AppVersionManifest;
+      const nextVersion = manifest.latestVersion || manifest.version;
+      if (!nextVersion) throw new Error("Version manifest is missing a version");
+      setLatestAppVersion(nextVersion);
+      setUpdateReleaseUrl(manifest.releaseUrl || "");
+      if (compareVersions(nextVersion, APP_VERSION) > 0) {
+        setUpdateStatus("available");
+        setUpdateMessage(`Version ${nextVersion} is available.`);
+      } else {
+        setUpdateStatus("current");
+        setUpdateMessage("Selah is up to date.");
+      }
+    } catch {
+      setUpdateStatus("error");
+      setUpdateMessage("Selah could not check for updates right now.");
+    }
+  };
+
+  const applyAppUpdate = () => {
+    snapshotSavedLibrary();
+    const target = updateReleaseUrl || window.location.href;
+    window.location.replace(target.includes("?") ? `${target}&updated=${Date.now()}` : `${target}?updated=${Date.now()}`);
+  };
 
   useEffect(() => {
     if (!("speechSynthesis" in window)) return;
@@ -1195,6 +1270,14 @@ export default function Home() {
       if (lookupSession !== wordLookupSession.current) return;
       setOriginalLookupStatus("error");
     }
+  };
+
+  const clearSelectedWord = () => {
+    wordLookupSession.current += 1;
+    setSelectedWord("");
+    setSelectedWordKey("");
+    setSelectedOriginalEntries([]);
+    setOriginalLookupStatus("idle");
   };
 
   const pronounceOriginal = (entry: LexiconEntry) => {
@@ -1868,6 +1951,21 @@ export default function Home() {
                 </div>
                 <p>No API key is required. The official audio files stay local for now, and Selah uses Microsoft David in the app until we turn the chapter recordings back on.</p>
               </div>
+              <div className="settings-card">
+                <div className="settings-card-heading">
+                  <span>APP UPDATES</span>
+                  <strong>Version {APP_VERSION}</strong>
+                </div>
+                <div className={`update-status ${updateStatus}`}>
+                  <span>{updateStatus === "available" ? "Update available" : updateStatus === "checking" ? "Checking" : updateStatus === "current" ? "Up to date" : updateStatus === "error" ? "Check failed" : "Manual check"}</span>
+                  <strong>{updateMessage}</strong>
+                  <p>Latest checked version: {latestAppVersion}</p>
+                </div>
+                <div className="settings-action-row">
+                  <button onClick={checkForAppUpdate} disabled={updateStatus === "checking"}>{updateStatus === "checking" ? "Checking..." : "Check for update"}</button>
+                  {updateStatus === "available" && <button className="primary" onClick={applyAppUpdate}>Update now</button>}
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -1987,9 +2085,10 @@ export default function Home() {
                     type="button"
                     className="search-read-aloud"
                     onClick={(event) => { event.stopPropagation(); void readSearchResult(result); }}
-                    aria-label={`Read ${result.reference} aloud`}
+                    aria-label={isReading && !isPaused ? `Pause reading ${result.reference}` : `Read ${result.reference} aloud`}
+                    title={isReading && !isPaused ? "Pause read aloud" : "Read aloud"}
                   >
-                    <span className="play-read-aloud" aria-hidden="true">▶</span>
+                    {isReading && !isPaused ? <span className="pause-read-aloud" aria-hidden="true">Ⅱ</span> : <span className="play-read-aloud" aria-hidden="true">▶</span>}
                   </button>
                 </div>
               ))}
@@ -2076,7 +2175,15 @@ export default function Home() {
       )}
 
       <div className={`workspace ${studyCollapsed ? "study-collapsed" : ""} ${isResizingStudy ? "resizing-study" : ""}`}>
-        <article className="reader">
+        <article
+          className="reader"
+          onClickCapture={(event) => {
+            if (!wordStudyMode || !selectedWordKey) return;
+            const target = event.target as HTMLElement;
+            if (target.closest(".verse-word, button, a, input, textarea, select")) return;
+            clearSelectedWord();
+          }}
+        >
           {commentaryReferenceTab && (
             <div className="commentary-reference-tab reader-reference-tab">
               <div>
@@ -2124,8 +2231,19 @@ export default function Home() {
                       role="button"
                       tabIndex={0}
                       aria-label={`${isBatchSelected ? "Remove" : "Add"} ${verse.reference} ${isBatchSelected ? "from" : "to"} section selection`}
-                      onClick={() => toggleVerseSelection(verse.id)}
-                      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") toggleVerseSelection(verse.id); }}
+                      onClick={(event) => {
+                        if (wordStudyMode && event.target === event.currentTarget) {
+                          clearSelectedWord();
+                          return;
+                        }
+                        toggleVerseSelection(verse.id);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          if (wordStudyMode) clearSelectedWord();
+                          else toggleVerseSelection(verse.id);
+                        }
+                      }}
                     >
                       {verse.text.split(/(\s+)/).map((token, index) => {
                         const wordKey = `${passageKey}-${verse.id}-${index}`;
@@ -2140,7 +2258,10 @@ export default function Home() {
                             className={`verse-word ${wordStudyMode ? "pronunciation-ready" : ""} ${selectedWordKey === wordKey ? "word-selected" : ""} ${isRedLetter ? "red-letter-word" : ""}`}
                             onClick={(event) => {
                               event.stopPropagation();
-                              if (wordStudyMode) void selectWord(token, verse.id, wordKey, currentWordOrdinal, currentWordOccurrence);
+                              if (wordStudyMode) {
+                                if (selectedWordKey === wordKey) clearSelectedWord();
+                                else void selectWord(token, verse.id, wordKey, currentWordOrdinal, currentWordOccurrence);
+                              }
                               else toggleVerseSelection(verse.id);
                             }}
                             aria-label={wordStudyMode ? `Pronounce and look up ${token.replace(/[^A-Za-zÀ-ž'-]/g, "")}` : `Select ${verse.reference}`}
@@ -2158,7 +2279,11 @@ export default function Home() {
                           <div className="verse-menu-heading"><strong>{verse.reference}</strong><button onClick={() => setOpenVerseMenu(null)} aria-label="Close verse menu">×</button></div>
                           <span>Highlight color</span>
                           <div className="verse-color-row">
-                            {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => <button key={color} className={`color-swatch ${color} ${highlightColor === color ? "selected" : ""}`} onClick={() => setVerseHighlight(verse.id, color)} aria-label={`Highlight ${color}`} title={preferredHighlightColor === color ? "Preferred highlight color" : undefined} />)}
+                            {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => (
+                              <button key={color} className={`color-swatch ${color} ${highlightColor === color ? "selected" : ""}`} style={{ "--swatch-color": highlightSwatchColors[color] } as CSSProperties} onClick={() => setVerseHighlight(verse.id, color)} aria-label={`Highlight ${color}`} title={preferredHighlightColor === color ? "Preferred highlight color" : undefined}>
+                                <span className="swatch-chip" style={{ backgroundColor: highlightSwatchColors[color] }} />
+                              </button>
+                            ))}
                             {highlightColor && <button className="remove-color" onClick={() => setVerseHighlight(verse.id)} aria-label="Remove highlight">Clear</button>}
                           </div>
                           <button className="open-note-action" onClick={() => { setSelectedVerse(verse.id); setInlineSectionNoteIds([]); setInlineNoteVerse(verse.id); setInlineNoteDraft(notes[verseKey(verse.id)] || ""); setOpenVerseMenu(null); }}>⌑ Write a note</button>
@@ -2204,7 +2329,11 @@ export default function Home() {
             <div className="highlight-toolbar" role="toolbar" aria-label="Highlight selected verses">
               <strong>{selectedForHighlight.length} {selectedForHighlight.length === 1 ? "verse" : "verses"} selected</strong>
               <span>Highlight:</span>
-              {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => <button key={color} className={`color-swatch ${color} ${preferredHighlightColor === color ? "preferred" : ""}`} onClick={() => applyHighlight(color)} aria-label={`Highlight ${color}`} />)}
+              {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => (
+                <button key={color} className={`color-swatch ${color} ${preferredHighlightColor === color ? "preferred" : ""}`} style={{ "--swatch-color": highlightSwatchColors[color] } as CSSProperties} onClick={() => applyHighlight(color)} aria-label={`Highlight ${color}`}>
+                  <span className="swatch-chip" style={{ backgroundColor: highlightSwatchColors[color] }} />
+                </button>
+              ))}
               <button className="section-note-action" onClick={() => { const key = `${passageKey}-section-${selectedSectionIds.join("_")}`; setInlineNoteVerse(null); setInlineSectionNoteIds(selectedSectionIds); setInlineNoteDraft(notes[key] || ""); setSelectedForHighlight([]); }}>✎ Add section note</button>
               <button className="clear-highlight" onClick={() => applyHighlight()} aria-label="Remove highlighting">Clear</button>
               <button className="cancel-selection" onClick={() => setSelectedForHighlight([])} aria-label="Cancel selection">×</button>
