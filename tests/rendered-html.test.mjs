@@ -187,6 +187,9 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /closeCommentaryReference/);
   assert.match(page, /reader-reference-tab/);
   assert.doesNotMatch(page, /stillOnReferencedChapter/);
+  assert.match(page, /data-commentary-reference/);
+  assert.match(page, /handleNativeCommentaryReferenceClick/);
+  assert.match(page, /stopImmediatePropagation/);
   assert.match(page, /studyPanelRef/);
   assert.match(page, /panel\.scrollTo\(\{ top: Math\.max\(0, targetTop\), behavior: "smooth" \}\)/);
   assert.match(page, /Read commentary aloud/);
