@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
@@ -1736,7 +1736,7 @@ export default function Home() {
               <section className="chapter-dropdown" aria-label={`Chapters in ${selectedBook.name}`}>
               <div className="chapter-dropdown-heading">
                 <div><strong>Choose a chapter</strong><span>{selectedBook.name}</span></div>
-                <button onClick={() => setPicker(null)} aria-label="Close chapter menu">×</button>
+                <button className="ui-close-button" onClick={() => setPicker(null)} aria-label="Close chapter menu">×</button>
               </div>
               <div className="chapter-grid">
                 {Array.from({ length: selectedBook.chapters }, (_, index) => index + 1).map((number) => (
@@ -1763,7 +1763,7 @@ export default function Home() {
         <section className="settings-window" aria-modal="true" role="dialog" aria-label="App settings">
           <div className="settings-window-heading">
             <div><span>SETTINGS</span><strong>Reading preferences</strong></div>
-            <button onClick={() => setAudioSettingsOpen(false)} aria-label="Close settings">X</button>
+            <button className="ui-close-button" onClick={() => setAudioSettingsOpen(false)} aria-label="Close settings">×</button>
           </div>
           <div className="settings-window-body">
             <div className="settings-card">
@@ -1847,7 +1847,7 @@ export default function Home() {
         <section className="saved-library saved-library-window" aria-modal="true" role="dialog" aria-label="Saved highlights and notes">
           <div className="saved-library-heading">
             <div><span>YOUR LIBRARY</span><strong>Saved</strong></div>
-            <button onClick={() => setSavedPanelOpen(false)} aria-label="Close saved section">X</button>
+            <button className="ui-close-button" onClick={() => setSavedPanelOpen(false)} aria-label="Close saved section">×</button>
           </div>
           <div className="saved-library-body">
             <div className="saved-bookmark-card">
@@ -1912,7 +1912,7 @@ export default function Home() {
         <section className="search-library" aria-modal="true" role="dialog" aria-label="Bible search results">
           <div className="search-library-heading">
             <div><span>BIBLE SEARCH</span><strong>Search Results</strong></div>
-            <button onClick={() => setSearchPanelOpen(false)} aria-label="Close Bible search">X</button>
+            <button className="ui-close-button" onClick={() => setSearchPanelOpen(false)} aria-label="Close Bible search">×</button>
           </div>
           <div className="search-library-body">
             <form className="search-library-box" onSubmit={(event) => { event.preventDefault(); void searchBible(); }}>
@@ -1969,14 +1969,14 @@ export default function Home() {
       )}
 
       {commentaryResourceOpen && (
-        <section className="commentary-resource-modal" aria-modal="true" role="dialog" aria-label="Commentary resource details">
-          <section className="commentary-resource-window">
+        <section className="commentary-resource-modal" aria-modal="true" role="dialog" aria-label="Commentary resource details" onClick={closeCommentaryResourceModal}>
+          <section className="commentary-resource-window" onClick={(event) => event.stopPropagation()}>
             <div className="commentary-resource-heading">
               <div>
                 <span>COMMENTARY RESOURCES</span>
                 <strong>What each source is good for</strong>
               </div>
-              <button onClick={closeCommentaryResourceModal} aria-label="Close commentary resource details">×</button>
+              <button className="ui-close-button" onClick={closeCommentaryResourceModal} aria-label="Close commentary resource details">×</button>
             </div>
             <p className="commentary-resource-intro">
               These are the three study layers in Selah. Each one is public-domain or externally linked, and each serves a slightly different kind of reading.
@@ -2023,7 +2023,7 @@ export default function Home() {
           <section className="passage-menu book-menu" aria-label="Books of the Bible">
                 <div className="passage-menu-heading">
                   <div><span>BIBLE</span><h2>Choose a book</h2></div>
-                  <button onClick={() => setPicker(null)} aria-label="Close">×</button>
+                  <button className="ui-close-button" onClick={() => setPicker(null)} aria-label="Close">×</button>
                 </div>
                 <label className="book-search">
                   <span className="sr-only">Filter Bible books</span>
@@ -2199,7 +2199,7 @@ export default function Home() {
             </div>
           ) : (
             <>
-              <button className="close-study" onClick={() => setMobileStudyOpen(false)} aria-label="Close study panel">×</button>
+              <button className="close-study ui-close-button" onClick={() => setMobileStudyOpen(false)} aria-label="Close study panel">×</button>
               <div className="study-tabs" role="tablist">
                 <button className={studyTab === "commentary" ? "active" : ""} onClick={() => setStudyTab("commentary")} role="tab">Commentary</button>
                 <button className={studyTab === "lexicon" ? "active" : ""} onClick={() => { setStudyTab("lexicon"); setWordStudyMode(true); }} role="tab">Original language</button>
@@ -2214,7 +2214,7 @@ export default function Home() {
                       onClick={() => openCommentaryResourceModal()}
                       aria-label={`About ${activeCommentaryResource.title}`}
                     >
-                      About this source
+                      i
                     </button>
                   </div>
                   <div className="commentary-source-tabs" role="tablist" aria-label="Commentary source">

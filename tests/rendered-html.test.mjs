@@ -187,7 +187,6 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /commentary-source-tools/);
   assert.match(page, /commentary-resource-info/);
   assert.match(page, /commentary-resource-modal/);
-  assert.match(page, /About this source/);
   assert.match(page, /Matthew Henry's Concise Commentary on the Whole Bible/);
   assert.match(page, /Commentary Critical and Explanatory on the Whole Bible/);
   assert.match(page, /Adam Clarke's Commentary/);
