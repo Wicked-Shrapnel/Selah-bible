@@ -1474,10 +1474,10 @@ export default function Home() {
 
   const openCommentaryReference = (reference: CommentaryReference) => {
     const passage = parsePassageReference(reference.osis) || parsePassageReference(reference.label);
-    if (!passage) return false;
+    if (!passage) return;
     const previous = { book: selectedBook, chapter, verse: selectedVerse };
     setCommentaryReferenceTab({ reference, passage, previous });
-    if (samePassage(previous, passage)) return true;
+    if (samePassage(previous, passage)) return;
     pendingSavedVerse.current = passage.verse;
     setSelectedBook(passage.book);
     setChapter(passage.chapter);
@@ -1489,35 +1489,14 @@ export default function Home() {
         document.getElementById(`verse-${passage.verse}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 0);
     }
-    return true;
   };
 
   const handleCommentaryReferenceClick = (event: ReactMouseEvent<HTMLAnchorElement>, reference: CommentaryReference) => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     event.stopPropagation();
-    if (!openCommentaryReference(reference)) window.location.assign(event.currentTarget.href);
+    openCommentaryReference(reference);
   };
-
-  useEffect(() => {
-    const handleNativeCommentaryReferenceClick = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      const link = target.closest<HTMLAnchorElement>("a[data-commentary-reference]");
-      if (!link) return;
-      const reference = {
-        osis: link.dataset.osis || "",
-        label: link.dataset.label || link.textContent?.trim() || "",
-      };
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      if (!openCommentaryReference(reference)) window.location.assign(link.href);
-    };
-    document.addEventListener("click", handleNativeCommentaryReferenceClick, true);
-    return () => document.removeEventListener("click", handleNativeCommentaryReferenceClick, true);
-  }, [chapter, selectedBook, selectedVerse]);
 
   const closeCommentaryReference = () => {
     if (!commentaryReferenceTab) return;
@@ -1598,9 +1577,6 @@ export default function Home() {
           href={href}
           key={`commentary-reference-${activeLink.start}-${href}`}
           className="commentary-passage-link"
-          data-commentary-reference="true"
-          data-osis={reference.osis}
-          data-label={label}
           onClick={(event) => handleCommentaryReferenceClick(event, reference)}
           aria-label={`Open ${label} in this page`}
         >
@@ -2220,9 +2196,6 @@ export default function Home() {
                                   key={`${reference.osis}-${index}`}
                                   href={href}
                                   className="commentary-passage-link"
-                                  data-commentary-reference="true"
-                                  data-osis={reference.osis}
-                                  data-label={reference.label}
                                   onClick={(event) => handleCommentaryReferenceClick(event, reference)}
                                   aria-label={`Open ${reference.label} in this page`}
                                 >
