@@ -1897,7 +1897,7 @@ export default function Home() {
                           <span><strong>{saved.reference}</strong><small>{text ? excerptText(text) : "Loading verse text..."}</small></span>
                           <b>Jump</b>
                         </button>
-                        <button className="saved-read-aloud icon-read-aloud" onClick={() => readSavedReference(saved)} disabled={!text} aria-label={`Read ${saved.reference} aloud`} title="Read aloud"><span className="speaker-icon" aria-hidden="true" /></button>
+                        <button className="saved-read-aloud icon-read-aloud" onClick={() => readSavedReference(saved)} disabled={!text} aria-label={`Read ${saved.reference} aloud`} title="Read aloud"><span className="play-read-aloud" aria-hidden="true">▶</span></button>
                       </div>
                     );
                   }) : <p>No saved highlights yet.</p>}
@@ -1913,7 +1913,7 @@ export default function Home() {
                           <span><strong>{saved.reference}</strong><small>{value}</small></span>
                           <b>Jump</b>
                         </button>
-                        <button className="saved-read-aloud icon-read-aloud" onClick={() => readSavedReference(saved)} disabled={!text} aria-label={`Read ${saved.reference} aloud`} title="Read aloud"><span className="speaker-icon" aria-hidden="true" /></button>
+                        <button className="saved-read-aloud icon-read-aloud" onClick={() => readSavedReference(saved)} disabled={!text} aria-label={`Read ${saved.reference} aloud`} title="Read aloud"><span className="play-read-aloud" aria-hidden="true">▶</span></button>
                       </div>
                     );
                   }) : <p>No saved notes yet.</p>}
@@ -1975,7 +1975,7 @@ export default function Home() {
                     onClick={(event) => { event.stopPropagation(); void readSearchResult(result); }}
                     aria-label={`Read ${result.reference} aloud`}
                   >
-                    <span className="speaker-icon" aria-hidden="true" />
+                    <span className="play-read-aloud" aria-hidden="true">▶</span>
                   </button>
                 </div>
               ))}
@@ -2317,7 +2317,7 @@ export default function Home() {
                         <div className="commentary-card-top">
                           <span className="card-label">{commentarySourceLabel(commentaryView).toUpperCase()} · {activeCommentaryEntry.heading.toUpperCase()}</span>
                           <button className={`commentary-read-aloud ${isReadingCommentary ? "active" : ""}`} onClick={toggleCommentaryReading} aria-label={isReadingCommentary && !isCommentaryPaused ? "Pause commentary" : "Read commentary aloud"} title={isReadingCommentary && !isCommentaryPaused ? "Pause commentary" : "Read commentary aloud"}>
-                            {isReadingCommentary && !isCommentaryPaused ? <span aria-hidden="true">Ⅱ</span> : <span className="speaker-icon" aria-hidden="true" />}
+                            {isReadingCommentary && !isCommentaryPaused ? <span aria-hidden="true">Ⅱ</span> : <span className="play-read-aloud" aria-hidden="true">▶</span>}
                           </button>
                         </div>
                         <h2>{selectedBook.name} {chapter}:{activeCommentaryEntry.verseStart}{activeCommentaryEntry.verseEnd !== activeCommentaryEntry.verseStart ? `–${activeCommentaryEntry.verseEnd}` : ""}</h2>

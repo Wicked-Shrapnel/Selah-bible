@@ -377,12 +377,7 @@ button, select { cursor: pointer; }
 .commentary-card-top button { flex: 0 0 auto; padding: 0; border: 0; color: var(--sage); background: transparent; font-size: 9px; font-weight: 800; }
 .commentary-card-top button.active { color: var(--sage-dark); background: transparent; }
 .commentary-card-top .commentary-read-aloud { width: 34px; height: 30px; display: grid; place-items: center; padding: 0; border: 0; background: transparent; }
-.speaker-icon { position: relative; width: 30px; height: 22px; display: inline-block; color: currentColor; transform: translateY(1px); }
-.speaker-icon::before { content: ""; position: absolute; left: 0; top: 5px; width: 18px; height: 12px; border-radius: 8px 1px 1px 8px; background: currentColor; clip-path: polygon(0 0, 46% 0, 100% -45%, 100% 145%, 46% 100%, 0 100%); }
-.speaker-icon::after { content: ""; position: absolute; left: 15px; top: 1px; width: 15px; height: 20px; background:
-  radial-gradient(ellipse at left center, transparent 0 34%, currentColor 36% 44%, transparent 46% 100%),
-  radial-gradient(ellipse at left center, transparent 0 56%, currentColor 58% 65%, transparent 67% 100%);
-}
+.play-read-aloud { display: inline-block; color: currentColor; font-size: 16px; line-height: 1; transform: translateX(1px); }
 .commentary-author { display: flex; align-items: center; gap: 10px; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--line); }
 .commentary-author > span { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 50%; background: var(--sage-soft); color: var(--sage); font: 700 9px Georgia, serif; }
 .commentary-author strong, .commentary-author small { display: block; }
