@@ -25,6 +25,18 @@ type CommentaryReferenceTab = {
   passage: { book: Book; chapter: number; verse: number };
   previous: { book: Book; chapter: number; verse: number };
 };
+type CommentaryResourceInfo = {
+  view: CommentaryView;
+  title: string;
+  author: string;
+  source: string;
+  where: string;
+  bestFor: string;
+  summary: string;
+  tag: string;
+  linkLabel: string;
+  linkUrl: (bookName: string, chapterNumber: number) => string;
+};
 type CommentarySource = {
   id: string;
   title: string;
@@ -219,6 +231,51 @@ function commentarySourceInitials(source: CommentarySource) {
   if (source.id === "jfb") return "JFB";
   if (source.id === "clarke") return "AC";
   return "MH";
+}
+
+function commentaryResourceInfo(view: CommentaryView, bookName: string, chapterNumber: number): CommentaryResourceInfo {
+  if (view === "jfb") {
+    return {
+      view,
+      title: "Commentary Critical and Explanatory on the Whole Bible",
+      author: "Robert Jamieson, A. R. Fausset, and David Brown",
+      source: "CCEL public-domain HTML edition",
+      where: "Bundled locally in Selah and drawn from the public-domain CCEL edition.",
+      bestFor: "Concise historical context, cross-references, and verse-level explanation.",
+      summary: "The tightest study layer in the app. JFB is especially useful when you want a compact, historically grounded read without a lot of devotional expansion.",
+      tag: "Historical",
+      linkLabel: "Open JFB source",
+      linkUrl: () => "https://ccel.org/j/jfb/jfb/JFB00.htm",
+    };
+  }
+
+  if (view === "clarke") {
+    return {
+      view,
+      title: "Adam Clarke's Commentary",
+      author: "Adam Clarke",
+      source: "BibleHub chapter pages",
+      where: "Linked out chapter by chapter so the app stays within the legal line while giving you the full external source.",
+      bestFor: "Broader background, longer explanation, and deeper chapter-level context.",
+      summary: "This is the fullest background layer. It is useful when you want a slower, more expansive walk through the passage and don’t mind jumping out to the chapter source.",
+      tag: "Background",
+      linkLabel: `Open ${bookName} ${chapterNumber} in Clarke`,
+      linkUrl: (name, chapter) => clarkeCommentaryUrl(name, chapter),
+    };
+  }
+
+  return {
+    view,
+    title: "Matthew Henry's Concise Commentary on the Whole Bible",
+    author: "Matthew Henry",
+    source: "CrossWire SWORD module",
+    where: "Bundled locally from the public-domain CrossWire MHCC module.",
+    bestFor: "Devotional and expository reading with clear, pastoral application.",
+    summary: "This is the app's main devotional commentary. It gives you a steady, readable explanation of the passage with an emphasis on application.",
+    tag: "Devotional",
+    linkLabel: "Open MHCC source",
+    linkUrl: () => "https://crosswire.org/sword/modules/ModInfo.jsp?modName=MHCC",
+  };
 }
 
 function clarkeCommentaryUrl(bookName: string, chapterNumber: number) {
@@ -439,6 +496,8 @@ export default function Home() {
   const [commentaryData, setCommentaryData] = useState<CommentaryChapter | null>(null);
   const [commentaryStatus, setCommentaryStatus] = useState<"loading" | "ready" | "error" | "linked">("loading");
   const [commentaryReferenceTab, setCommentaryReferenceTab] = useState<CommentaryReferenceTab | null>(null);
+  const [commentaryResourceOpen, setCommentaryResourceOpen] = useState(false);
+  const [commentaryResourceView, setCommentaryResourceView] = useState<CommentaryView>("expository");
   const [bookmark, setBookmark] = useState<SavedPlace | null>(null);
   const [savedPanelOpen, setSavedPanelOpen] = useState(false);
   const [savedViewTab, setSavedViewTab] = useState<"highlights" | "notes">("highlights");
@@ -1247,6 +1306,12 @@ export default function Home() {
   }, [commentaryWordIndex, commentaryView, isCommentaryPaused, isReadingCommentary]);
 
   const clarkeUrl = clarkeCommentaryUrl(selectedBook.name, chapter);
+  const commentaryResourceCards = [
+    commentaryResourceInfo("expository", selectedBook.name, chapter),
+    commentaryResourceInfo("jfb", selectedBook.name, chapter),
+    commentaryResourceInfo("clarke", selectedBook.name, chapter),
+  ];
+  const activeCommentaryResource = commentaryResourceInfo(commentaryResourceView, selectedBook.name, chapter);
   const chapterNotes = verses.filter((verse) => Boolean(notes[verseKey(verse.id)]));
   const selectedSectionIds = [...selectedForHighlight].sort((a, b) => a - b);
   const sectionNoteKey = `${passageKey}-section-${selectedSectionIds.join("_")}`;
@@ -1507,6 +1572,13 @@ export default function Home() {
       }, 0);
     }
   };
+
+  const openCommentaryResourceModal = (view: CommentaryView = commentaryView) => {
+    setCommentaryResourceView(view);
+    setCommentaryResourceOpen(true);
+  };
+
+  const closeCommentaryResourceModal = () => setCommentaryResourceOpen(false);
 
   const toggleCommentaryReading = () => {
     if (!activeCommentaryEntry || !("speechSynthesis" in window)) return;
@@ -1884,6 +1956,56 @@ export default function Home() {
         </section>
       )}
 
+      {commentaryResourceOpen && (
+        <section className="commentary-resource-modal" aria-modal="true" role="dialog" aria-label="Commentary resource details">
+          <button className="picker-backdrop" onClick={closeCommentaryResourceModal} aria-label="Close commentary resource details" />
+          <section className="commentary-resource-window">
+            <div className="commentary-resource-heading">
+              <div>
+                <span>COMMENTARY RESOURCES</span>
+                <strong>What each source is good for</strong>
+              </div>
+              <button onClick={closeCommentaryResourceModal} aria-label="Close commentary resource details">×</button>
+            </div>
+            <p className="commentary-resource-intro">
+              These are the three study layers in Selah. Each one is public-domain or externally linked, and each serves a slightly different kind of reading.
+            </p>
+            <div className="commentary-resource-grid">
+              {commentaryResourceCards.map((resource) => (
+                <article key={resource.view} className={`commentary-resource-card ${resource.view === commentaryResourceView ? "active" : ""}`}>
+                  <div className="commentary-resource-card-top">
+                    <div>
+                      <span>{resource.tag}</span>
+                      <strong>{resource.title}</strong>
+                    </div>
+                    {resource.view === commentaryResourceView && <b>Current</b>}
+                  </div>
+                  <p>{resource.summary}</p>
+                  <dl>
+                    <div>
+                      <dt>Written by</dt>
+                      <dd>{resource.author}</dd>
+                    </div>
+                    <div>
+                      <dt>Where to find it</dt>
+                      <dd>{resource.source}</dd>
+                    </div>
+                    <div>
+                      <dt>Best for</dt>
+                      <dd>{resource.bestFor}</dd>
+                    </div>
+                  </dl>
+                  <div className="commentary-resource-footer">
+                    <small>{resource.where}</small>
+                    <a href={resource.linkUrl(selectedBook.name, chapter)} target="_blank" rel="noreferrer">{resource.linkLabel} ↗</a>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </section>
+      )}
+
       {picker === "books" && (
         <>
           <button className="picker-backdrop" onClick={() => setPicker(null)} aria-label="Close passage picker" />
@@ -2075,6 +2197,15 @@ export default function Home() {
               {studyTab === "commentary" ? (
                 <div className="study-content">
                   <div className="study-reference"><span>{selected?.reference || `${selectedBook.name} ${chapter}`}</span><small>Public domain</small></div>
+                  <div className="commentary-source-tools">
+                    <button
+                      className="commentary-resource-info"
+                      onClick={() => openCommentaryResourceModal()}
+                      aria-label={`About ${activeCommentaryResource.title}`}
+                    >
+                      About this source
+                    </button>
+                  </div>
                   <div className="commentary-source-tabs" role="tablist" aria-label="Commentary source">
                     <button
                       className={commentaryView === "expository" ? "active" : ""}

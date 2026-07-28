@@ -184,6 +184,15 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /commentaryReferenceLinks/);
   assert.match(page, /commentary-passage-link/);
   assert.doesNotMatch(page, /handleCommentaryReferenceClick/);
+  assert.match(page, /commentary-source-tools/);
+  assert.match(page, /commentary-resource-info/);
+  assert.match(page, /commentary-resource-modal/);
+  assert.match(page, /About this source/);
+  assert.match(page, /Matthew Henry's Concise Commentary on the Whole Bible/);
+  assert.match(page, /Commentary Critical and Explanatory on the Whole Bible/);
+  assert.match(page, /Adam Clarke's Commentary/);
+  assert.match(page, /crosswire\.org\/sword\/modules\/ModInfo\.jsp\?modName=MHCC/);
+  assert.match(page, /ccel\.org\/j\/jfb\/jfb\/JFB00\.htm/);
   assert.match(page, /commentaryReferenceTab/);
   assert.match(page, /closeCommentaryReference/);
   assert.match(page, /reader-reference-tab/);
@@ -226,6 +235,9 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(styles, /search-read-aloud/);
   assert.match(styles, /search-red-letter/);
   assert.match(styles, /commentary-passage-link/);
+  assert.match(styles, /commentary-resource-modal/);
+  assert.match(styles, /commentary-resource-window/);
+  assert.match(styles, /commentary-resource-card/);
   assert.match(styles, /commentary-reference-tab/);
   assert.match(styles, /reader-reference-tab/);
   assert.match(styles, /search-suggestion/);
