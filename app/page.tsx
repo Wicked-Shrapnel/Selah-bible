@@ -60,12 +60,13 @@ type ReleaseNote = { version: string; title?: string; releasedAt?: string; chang
 type PendingReleaseNotes = { fromVersion: string; toVersion: string; releases: ReleaseNote[] };
 type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string; releases?: ReleaseNote[]; changelog?: ReleaseNote[]; notes?: string[] };
 
-const APP_VERSION = "2.0.6";
+const APP_VERSION = "2.0.7";
 const APP_VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/Wicked-Shrapnel/Selah-bible/main/public/app-version.json";
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const UPDATE_NOTES_STORAGE_KEY = "selah-pending-release-notes-v1";
 const LAST_SEEN_VERSION_STORAGE_KEY = "selah-last-seen-version-v1";
-const DEFAULT_READ_ALOUD_RATE = 0.92;
+const READ_ALOUD_RATE_OPTIONS = [0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3];
+const DEFAULT_READ_ALOUD_RATE = 0.9;
 const MIN_STUDY_PANEL_WIDTH = 380;
 const MAX_STUDY_PANEL_WIDTH = 680;
 const OFFICIAL_AUDIO_ENABLED = false;
@@ -108,6 +109,22 @@ function releaseNotesForUpdate(manifest: AppVersionManifest, fromVersion: string
     releasedAt: manifest.releasedAt,
     changes: manifest.notes?.length ? manifest.notes : ["Selah has been updated to the latest available version."],
   }];
+}
+
+function allReleaseNotes(manifest: AppVersionManifest): ReleaseNote[] {
+  return [...(manifest.releases || manifest.changelog || [])]
+    .filter((release) => release.version)
+    .map((release) => ({
+      ...release,
+      changes: release.changes?.length ? release.changes : ["Selah has been updated to this version."],
+    }))
+    .sort((left, right) => compareVersions(right.version, left.version));
+}
+
+function closestReadAloudRate(value: number) {
+  return READ_ALOUD_RATE_OPTIONS.reduce((closest, option) => (
+    Math.abs(option - value) < Math.abs(closest - value) ? option : closest
+  ), DEFAULT_READ_ALOUD_RATE);
 }
 
 const books: Book[] = [
@@ -570,6 +587,8 @@ export default function Home() {
   const [updateReleaseUrl, setUpdateReleaseUrl] = useState("");
   const [updateMessage, setUpdateMessage] = useState("Ready to check for a newer Selah build.");
   const [releaseNotesModal, setReleaseNotesModal] = useState<PendingReleaseNotes | null>(null);
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const [versionHistoryNotes, setVersionHistoryNotes] = useState<ReleaseNote[]>([]);
   const cancelled = useRef(false);
   const activeAudio = useRef<HTMLAudioElement | null>(null);
   const syncedAudioVerse = useRef<number | null>(null);
@@ -604,7 +623,7 @@ export default function Home() {
   }, [verses]);
 
   useEffect(() => {
-    if (!commentaryResourceOpen && !releaseNotesModal) return;
+    if (!commentaryResourceOpen && !releaseNotesModal && !versionHistoryOpen) return;
     const previousBodyOverflow = document.body.style.overflow;
     const previousRootOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
@@ -613,7 +632,7 @@ export default function Home() {
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousRootOverflow;
     };
-  }, [commentaryResourceOpen, releaseNotesModal]);
+  }, [commentaryResourceOpen, releaseNotesModal, versionHistoryOpen]);
 
   const loadBibleChapter = useCallback(async (bookName: string, chapterNumber: number) => {
     const fileName = bibleFileName(bookName);
@@ -660,6 +679,27 @@ export default function Home() {
       });
       localStorage.setItem(LAST_SEEN_VERSION_STORAGE_KEY, toVersion);
     }
+  };
+
+  const openVersionHistory = async () => {
+    setVersionHistoryOpen(true);
+    setVersionHistoryNotes([{ version: APP_VERSION, title: "Loading version history", changes: ["Checking the update board..."] }]);
+    const historyUrls = [`${APP_VERSION_MANIFEST_URL}?history=${Date.now()}`, `/app-version.json?history=${Date.now()}`];
+    for (const url of historyUrls) {
+      try {
+        const response = await fetch(url, { cache: "no-store" });
+        if (!response.ok) throw new Error("Version history unavailable");
+        const manifest = await response.json() as AppVersionManifest;
+        const releases = allReleaseNotes(manifest);
+        if (releases.length) {
+          setVersionHistoryNotes(releases);
+          return;
+        }
+      } catch {
+        // Try the next history source.
+      }
+    }
+    setVersionHistoryNotes([{ version: APP_VERSION, title: "Version history unavailable", changes: ["Selah could not load the update board right now."] }]);
   };
 
   useEffect(() => {
@@ -2023,7 +2063,21 @@ export default function Home() {
               </div>
               <label className="speed-control">
                 <span>Speed</span>
-                <input type="range" min="0.7" max="1.25" step="0.05" value={rate} onChange={(event) => setRate(Number(event.target.value))} />
+                <input
+                  type="range"
+                  min={READ_ALOUD_RATE_OPTIONS[0]}
+                  max={READ_ALOUD_RATE_OPTIONS[READ_ALOUD_RATE_OPTIONS.length - 1]}
+                  step="0.1"
+                  list="read-aloud-speed-ticks"
+                  value={rate}
+                  onChange={(event) => setRate(closestReadAloudRate(Number(event.target.value)))}
+                />
+                <datalist id="read-aloud-speed-ticks">
+                  {READ_ALOUD_RATE_OPTIONS.map((speed) => <option key={speed} value={speed} />)}
+                </datalist>
+                <div className="speed-ticks" aria-hidden="true">
+                  {READ_ALOUD_RATE_OPTIONS.map((speed) => <i key={speed} className={speed === rate ? "active" : ""} />)}
+                </div>
                 <strong>{rate.toFixed(2)}x</strong>
                 <button type="button" onClick={() => setRate(DEFAULT_READ_ALOUD_RATE)}>Default</button>
               </label>
@@ -2065,9 +2119,12 @@ export default function Home() {
                 <p className="settings-help">When enabled, Selah reads the English definition immediately after pronouncing the Hebrew or Greek word.</p>
               </div>
               <div className="settings-card">
-                <div className="settings-card-heading">
-                  <span>APP UPDATES</span>
-                  <strong>Version {APP_VERSION}</strong>
+                <div className="settings-card-heading settings-card-heading-action">
+                  <div>
+                    <span>APP UPDATES</span>
+                    <strong>Version {APP_VERSION}</strong>
+                  </div>
+                  <button type="button" onClick={openVersionHistory} aria-label="Open version history">History</button>
                 </div>
                 <div className="settings-action-row">
                   <button onClick={checkForAppUpdate} disabled={updateStatus === "checking"}>{updateStatus === "checking" ? "Checking..." : "Check for update"}</button>
@@ -2212,6 +2269,36 @@ export default function Home() {
               })}
             </div>
           </div>
+        </section>
+      )}
+
+      {versionHistoryOpen && (
+        <section className="release-notes-modal" aria-modal="true" role="dialog" aria-label="Selah version history" onClick={() => setVersionHistoryOpen(false)}>
+          <section className="release-notes-window version-history-window" onClick={(event) => event.stopPropagation()}>
+            <div className="release-notes-heading">
+              <div>
+                <span>VERSION HISTORY</span>
+                <strong>Update board</strong>
+                <small>Showing the release notes Selah uses for update popups.</small>
+              </div>
+              <button className="ui-close-button" onClick={() => setVersionHistoryOpen(false)} aria-label="Close version history">×</button>
+            </div>
+            <div className="release-notes-body">
+              {versionHistoryNotes.map((release) => (
+                <article className="release-note-card" key={release.version}>
+                  <div>
+                    <span>{release.releasedAt || "Release"}</span>
+                    <strong>{release.title || `Version ${release.version}`}</strong>
+                    <small>Version {release.version}</small>
+                  </div>
+                  <ul>
+                    {(release.changes || []).map((change) => <li key={change}>{change}</li>)}
+                  </ul>
+                </article>
+              ))}
+            </div>
+            <button className="release-notes-done" onClick={() => setVersionHistoryOpen(false)}>Close history</button>
+          </section>
         </section>
       )}
 

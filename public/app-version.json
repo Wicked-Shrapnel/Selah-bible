@@ -1,8 +1,17 @@
 {
-  "latestVersion": "2.0.6",
+  "latestVersion": "2.0.7",
   "releasedAt": "2026-07-28",
   "releaseUrl": "/",
   "releases": [
+    {
+      "version": "2.0.7",
+      "releasedAt": "2026-07-28",
+      "title": "Version history and speed ticks",
+      "changes": [
+        "In the corner of the version section, added a version history page that has all the update board information.",
+        "Added ticks to the speed bar that snap to them so the reading speed stays a nice round consistent number."
+      ]
+    },
     {
       "version": "2.0.6",
       "releasedAt": "2026-07-28",

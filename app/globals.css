@@ -147,6 +147,18 @@ button, select { cursor: pointer; }
 .settings-card-heading span, .settings-card-heading strong { display: block; }
 .settings-card-heading span { color: #a18d57; font-size: 8px; font-weight: 850; letter-spacing: .15em; }
 .settings-card-heading strong { margin-top: 4px; font: 700 22px Georgia, serif; }
+.settings-card-heading-action { display: flex; align-items: start; justify-content: space-between; gap: 14px; }
+.settings-card-heading-action button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #b9c9c0;
+  border-radius: 7px;
+  color: var(--sage);
+  background: var(--sage-soft);
+  font-size: 9px;
+  font-weight: 850;
+}
+.settings-card-heading-action button:hover { color: var(--sage-dark); border-color: #a9bfb1; background: #eef4ef; }
 .settings-card label { display: grid; grid-template-columns: 72px minmax(0, 1fr) 42px; align-items: center; gap: 10px; }
 .settings-card label + label { margin-top: 13px; padding-top: 13px; border-top: 1px solid var(--line); }
 .settings-card label > span { color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; }
@@ -186,6 +198,9 @@ button, select { cursor: pointer; }
 .settings-card label.settings-toggle:focus-within i { outline: 2px solid rgba(33,85,66,.28); outline-offset: 3px; }
 .settings-card .settings-help { margin-top: 13px; padding-top: 13px; border-top: 1px solid var(--line); font-size: 11px; }
 .settings-card label.speed-control { grid-template-columns: 72px minmax(0, 1fr) auto auto; margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); }
+.settings-card label.speed-control input { grid-column: 2; grid-row: 1; }
+.settings-card label.speed-control strong { grid-column: 3; grid-row: 1; }
+.settings-card label.speed-control button { grid-column: 4; grid-row: 1; }
 .settings-card label.speed-control button {
   min-height: 28px;
   padding: 0 10px;
@@ -197,6 +212,9 @@ button, select { cursor: pointer; }
   font-weight: 850;
 }
 .settings-card label.speed-control button:hover { color: var(--sage-dark); border-color: #a9bfb1; background: #eef4ef; }
+.speed-ticks { grid-column: 2 / 3; display: flex; justify-content: space-between; padding: 0 2px; transform: translateY(-5px); pointer-events: none; }
+.speed-ticks i { width: 2px; height: 6px; border-radius: 999px; background: #cfc8b8; }
+.speed-ticks i.active { height: 9px; background: var(--sage); }
 .settings-action-row { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 13px; padding-top: 13px; border-top: 1px solid var(--line); }
 .settings-action-row button { min-height: 34px; padding: 0 12px; border: 1px solid #b9c9c0; border-radius: 7px; color: var(--sage); background: var(--sage-soft); font-size: 10px; font-weight: 850; }
 .settings-action-row button.primary { color: white; border-color: var(--sage); background: var(--sage); }
