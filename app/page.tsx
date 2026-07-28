@@ -82,6 +82,17 @@ const books: Book[] = [
   ["Jude",1,"New Testament"],["Revelation",22,"New Testament"],
 ].map(([name, chapters, testament]) => ({ name, chapters, testament } as Book));
 
+function normalizeSavedPlace(value: unknown): { place: SavedPlace; book: Book } | null {
+  if (!value || typeof value !== "object") return null;
+  const saved = value as { book?: unknown; chapter?: unknown };
+  const bookName = typeof saved.book === "string" ? saved.book : null;
+  const chapter = typeof saved.chapter === "number" ? saved.chapter : Number(saved.chapter);
+  if (!bookName || !Number.isInteger(chapter)) return null;
+  const book = books.find((item) => item.name === bookName);
+  if (!book || chapter < 1 || chapter > book.chapters) return null;
+  return { place: { book: book.name, chapter }, book };
+}
+
 const bookReferenceAliases: Record<string, string> = {
   ge: "Genesis", gen: "Genesis", genesis: "Genesis",
   ex: "Exodus", exo: "Exodus", exod: "Exodus", exodus: "Exodus",
@@ -587,11 +598,21 @@ export default function Home() {
       const savedAudioSource = localStorage.getItem("selah-audio-source") as AudioSourcePreference | null;
       const savedOriginalDefinition = localStorage.getItem("selah-read-original-definition");
       const savedStudyPanelWidth = Number(localStorage.getItem(STUDY_PANEL_WIDTH_STORAGE_KEY));
+      let restoredPlace: { place: SavedPlace; book: Book } | null = null;
       if (savedHighlights) {
         const parsed = JSON.parse(savedHighlights) as string[] | Record<string, HighlightColor>;
         setHighlights(Array.isArray(parsed) ? Object.fromEntries(parsed.map((key) => [key, "gold" as HighlightColor])) : parsed);
       }
       if (savedNotes) setNotes(JSON.parse(savedNotes));
+      if (savedPlace) {
+        try {
+          restoredPlace = normalizeSavedPlace(JSON.parse(savedPlace));
+          if (restoredPlace) setBookmark(restoredPlace.place);
+          else localStorage.removeItem("selah-reading-place-v1");
+        } catch {
+          localStorage.removeItem("selah-reading-place-v1");
+        }
+      }
       if (savedHighlightColor && ["gold", "sage", "blue", "rose"].includes(savedHighlightColor)) setPreferredHighlightColor(savedHighlightColor);
       if (savedDockCollapsed === "true") setAudioDockCollapsed(true);
       if (savedTheme && ["system", "light", "dark", "true-dark"].includes(savedTheme)) setThemePreference(savedTheme);
@@ -607,14 +628,9 @@ export default function Home() {
         setChapter(linkedPassage.chapter);
         return;
       }
-      if (savedPlace) {
-        const parsed = JSON.parse(savedPlace) as SavedPlace;
-        const savedBook = books.find((book) => book.name === parsed.book);
-        if (savedBook && parsed.chapter >= 1 && parsed.chapter <= savedBook.chapters) {
-          setBookmark(parsed);
-          setSelectedBook(savedBook);
-          setChapter(parsed.chapter);
-        }
+      if (restoredPlace) {
+        setSelectedBook(restoredPlace.book);
+        setChapter(restoredPlace.place.chapter);
       }
     });
   }, []);
