@@ -58,7 +58,7 @@ type BibleSearchResult = { book: Book; chapter: number; verse: number; reference
 type UpdateStatus = "idle" | "checking" | "current" | "available" | "error";
 type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string };
 
-const APP_VERSION = "2.0.2";
+const APP_VERSION = "2.0.3";
 const APP_VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/Wicked-Shrapnel/Selah-bible/main/public/app-version.json";
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const MIN_STUDY_PANEL_WIDTH = 380;
