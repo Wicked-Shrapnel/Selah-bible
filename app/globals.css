@@ -196,6 +196,19 @@ button, select { cursor: pointer; }
 .update-status strong { margin-top: 4px; color: var(--sage); font: 700 13px Georgia, serif; }
 .update-status p { margin-top: 6px; font-size: 11px; }
 .update-status.available { border-color: #c9b16a; background: rgba(255,247,218,.82); }
+.release-notes-modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px; overflow: auto; background: rgba(28,34,30,.38); }
+.release-notes-window { width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; border: 1px solid #d9d4c8; border-radius: 16px; color: var(--ink); background: var(--white); box-shadow: 0 28px 84px rgba(29,35,30,.26); }
+.release-notes-heading { position: sticky; top: 0; z-index: 1; display: flex; align-items: start; justify-content: space-between; gap: 18px; padding: 24px 26px 18px; border-bottom: 1px solid var(--line); background: rgba(255,254,251,.97); }
+.release-notes-heading span, .release-note-card span { display: block; color: #a18d57; font-size: 8px; font-weight: 850; letter-spacing: .15em; text-transform: uppercase; }
+.release-notes-heading strong { display: block; margin-top: 5px; font: 700 30px Georgia, serif; }
+.release-notes-heading small { display: block; margin-top: 4px; color: var(--muted); font: italic 12px Georgia, serif; }
+.release-notes-body { display: grid; gap: 12px; padding: 20px 26px 8px; }
+.release-note-card { padding: 17px; border: 1px solid var(--line); border-radius: 10px; background: rgba(247,244,237,.7); }
+.release-note-card strong { display: block; margin-top: 5px; font: 700 18px Georgia, serif; }
+.release-note-card small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; font-weight: 800; }
+.release-note-card ul { margin: 14px 0 0; padding-left: 18px; color: var(--muted); font: 14px/1.55 Georgia, serif; }
+.release-note-card li + li { margin-top: 6px; }
+.release-notes-done { margin: 18px 26px 26px; min-height: 38px; padding: 0 16px; border: 1px solid #b9c9c0; border-radius: 8px; color: white; background: var(--sage); font-size: 11px; font-weight: 850; }
 .saved-bookmark-card { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 15px; align-items: center; padding: 18px; border: 1px solid #d9d4c8; border-radius: 8px; background: var(--white); box-shadow: 0 8px 24px rgba(48,43,32,.06); }
 .saved-bookmark-card .saved-bookmark-icon { width: 18px; height: 24px; margin: 0 auto; }
 .saved-bookmark-card span, .saved-section-top span { display: block; color: #a18d57; font-size: 8px; font-weight: 850; letter-spacing: .15em; }
@@ -593,6 +606,11 @@ button, select { cursor: pointer; }
 :root[data-theme="dark"] .settings-card label.settings-toggle i { border-color: #53665b; background: #151d18; }
 :root[data-theme="dark"] .settings-card label.settings-toggle i::after { background: #dce8df; }
 :root[data-theme="dark"] .settings-card label.settings-toggle input:checked + i { border-color: #8fbda2; background: #3f7359; }
+:root[data-theme="dark"] .release-notes-modal { background: rgba(8, 11, 9, .72); }
+:root[data-theme="dark"] .release-notes-window,
+:root[data-theme="dark"] .release-note-card { border-color: var(--line); background: #172019; }
+:root[data-theme="dark"] .release-notes-heading { background: rgba(25,32,27,.96); }
+:root[data-theme="dark"] .release-note-card ul { color: #c7d1ca; }
 :root[data-theme="dark"] .audio-source-summary p { color: #b8c2ba; }
 :root[data-theme="dark"] .update-status p { color: #b8c2ba; }
 :root[data-theme="dark"] .reader { background: var(--white); }
@@ -838,6 +856,11 @@ button, select { cursor: pointer; }
 :root[data-theme="true-dark"] .settings-card label.settings-toggle i { border-color: #46535d; background: #0f1316; }
 :root[data-theme="true-dark"] .settings-card label.settings-toggle i::after { background: #efe6d0; }
 :root[data-theme="true-dark"] .settings-card label.settings-toggle input:checked + i { border-color: #84a993; background: #315246; }
+:root[data-theme="true-dark"] .release-notes-modal { background: rgba(0, 0, 0, .78); }
+:root[data-theme="true-dark"] .release-notes-window,
+:root[data-theme="true-dark"] .release-note-card { border-color: #31373d; background: #14181d; }
+:root[data-theme="true-dark"] .release-notes-heading { background: rgba(17,19,21,.96); }
+:root[data-theme="true-dark"] .release-note-card ul { color: #d9d1c2; }
 :root[data-theme="true-dark"] .update-status span { color: #c5a75d; }
 :root[data-theme="true-dark"] .update-status strong { color: #dce7df; }
 :root[data-theme="true-dark"] .update-status p { color: #b9b1a1; }

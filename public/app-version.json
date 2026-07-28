@@ -1,5 +1,26 @@
 {
-  "latestVersion": "2.0.4",
+  "latestVersion": "2.0.5",
   "releasedAt": "2026-07-28",
-  "releaseUrl": "/"
+  "releaseUrl": "/",
+  "releases": [
+    {
+      "version": "2.0.5",
+      "releasedAt": "2026-07-28",
+      "title": "Automatic update notes",
+      "changes": [
+        "Checking for updates now refreshes Selah automatically when a newer build is available.",
+        "After the refresh, Selah opens a patch notes window with the version number and what changed.",
+        "The update manifest can now list multiple releases so users who skip versions can review every missed update."
+      ]
+    },
+    {
+      "version": "2.0.4",
+      "releasedAt": "2026-07-28",
+      "title": "Read aloud and pronunciation polish",
+      "changes": [
+        "Changed original-language definition pronunciation to a toggle switch.",
+        "Saved highlights, saved notes, and search read-aloud buttons now switch between play and pause while in use."
+      ]
+    }
+  ]
 }

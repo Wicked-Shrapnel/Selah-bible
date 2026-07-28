@@ -56,11 +56,15 @@ type BibleSourceChapter = { chapter: string; verses: BibleSourceVerse[] };
 type BibleSourceBook = { book: string; chapters: BibleSourceChapter[] };
 type BibleSearchResult = { book: Book; chapter: number; verse: number; reference: string; text: string; rank: number; kind: "match" | "suggestion" };
 type UpdateStatus = "idle" | "checking" | "current" | "available" | "error";
-type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string };
+type ReleaseNote = { version: string; title?: string; releasedAt?: string; changes?: string[] };
+type PendingReleaseNotes = { fromVersion: string; toVersion: string; releases: ReleaseNote[] };
+type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string; releases?: ReleaseNote[]; changelog?: ReleaseNote[]; notes?: string[] };
 
-const APP_VERSION = "2.0.4";
+const APP_VERSION = "2.0.5";
 const APP_VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/Wicked-Shrapnel/Selah-bible/main/public/app-version.json";
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
+const UPDATE_NOTES_STORAGE_KEY = "selah-pending-release-notes-v1";
+const LAST_SEEN_VERSION_STORAGE_KEY = "selah-last-seen-version-v1";
 const MIN_STUDY_PANEL_WIDTH = 380;
 const MAX_STUDY_PANEL_WIDTH = 680;
 const OFFICIAL_AUDIO_ENABLED = false;
@@ -84,6 +88,25 @@ function compareVersions(left: string, right: string) {
     if (difference !== 0) return difference;
   }
   return 0;
+}
+
+function releaseNotesForUpdate(manifest: AppVersionManifest, fromVersion: string, toVersion: string): ReleaseNote[] {
+  const releases = [...(manifest.releases || manifest.changelog || [])]
+    .filter((release) => release.version && compareVersions(release.version, fromVersion) > 0 && compareVersions(release.version, toVersion) <= 0)
+    .map((release) => ({
+      ...release,
+      changes: release.changes?.length ? release.changes : ["Selah has been updated to this version."],
+    }))
+    .sort((left, right) => compareVersions(left.version, right.version));
+
+  if (releases.length) return releases;
+
+  return [{
+    version: toVersion,
+    title: "Selah update",
+    releasedAt: manifest.releasedAt,
+    changes: manifest.notes?.length ? manifest.notes : ["Selah has been updated to the latest available version."],
+  }];
 }
 
 const books: Book[] = [
@@ -546,6 +569,7 @@ export default function Home() {
   const [latestAppVersion, setLatestAppVersion] = useState(APP_VERSION);
   const [updateReleaseUrl, setUpdateReleaseUrl] = useState("");
   const [updateMessage, setUpdateMessage] = useState("Ready to check for a newer Selah build.");
+  const [releaseNotesModal, setReleaseNotesModal] = useState<PendingReleaseNotes | null>(null);
   const cancelled = useRef(false);
   const activeAudio = useRef<HTMLAudioElement | null>(null);
   const syncedAudioVerse = useRef<number | null>(null);
@@ -580,7 +604,7 @@ export default function Home() {
   }, [verses]);
 
   useEffect(() => {
-    if (!commentaryResourceOpen) return;
+    if (!commentaryResourceOpen && !releaseNotesModal) return;
     const previousBodyOverflow = document.body.style.overflow;
     const previousRootOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
@@ -589,7 +613,7 @@ export default function Home() {
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousRootOverflow;
     };
-  }, [commentaryResourceOpen]);
+  }, [commentaryResourceOpen, releaseNotesModal]);
 
   const loadBibleChapter = useCallback(async (bookName: string, chapterNumber: number) => {
     const fileName = bibleFileName(bookName);
@@ -613,6 +637,31 @@ export default function Home() {
     })) as Verse[];
   }, []);
 
+  const showReleaseNotesFromManifest = async (fromVersion: string, toVersion = APP_VERSION) => {
+    if (compareVersions(toVersion, fromVersion) <= 0) return;
+    try {
+      const response = await fetch(`${APP_VERSION_MANIFEST_URL}?notes=${Date.now()}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("Version manifest unavailable");
+      const manifest = await response.json() as AppVersionManifest;
+      const releases = releaseNotesForUpdate(manifest, fromVersion, toVersion);
+      if (releases.length) {
+        setReleaseNotesModal({ fromVersion, toVersion, releases });
+        localStorage.setItem(LAST_SEEN_VERSION_STORAGE_KEY, toVersion);
+      }
+    } catch {
+      setReleaseNotesModal({
+        fromVersion,
+        toVersion,
+        releases: [{
+          version: toVersion,
+          title: "Selah update",
+          changes: ["Selah has been updated to the latest version."],
+        }],
+      });
+      localStorage.setItem(LAST_SEEN_VERSION_STORAGE_KEY, toVersion);
+    }
+  };
+
   useEffect(() => {
     queueMicrotask(() => {
       const savedHighlights = localStorage.getItem("selah-highlights-v2");
@@ -624,7 +673,37 @@ export default function Home() {
       const savedAudioSource = localStorage.getItem("selah-audio-source") as AudioSourcePreference | null;
       const savedOriginalDefinition = localStorage.getItem("selah-read-original-definition");
       const savedStudyPanelWidth = Number(localStorage.getItem(STUDY_PANEL_WIDTH_STORAGE_KEY));
+      const pendingReleaseNotes = localStorage.getItem(UPDATE_NOTES_STORAGE_KEY);
+      const searchParams = new URLSearchParams(window.location.search);
       let restoredPlace: { place: SavedPlace; book: Book } | null = null;
+      if (pendingReleaseNotes) {
+        try {
+          const parsed = JSON.parse(pendingReleaseNotes) as PendingReleaseNotes;
+          if (parsed.toVersion && compareVersions(APP_VERSION, parsed.toVersion) >= 0 && parsed.releases?.length) {
+            setReleaseNotesModal(parsed);
+            localStorage.setItem(LAST_SEEN_VERSION_STORAGE_KEY, parsed.toVersion);
+          }
+        } catch {
+          // Ignore malformed pending update notes.
+        } finally {
+          localStorage.removeItem(UPDATE_NOTES_STORAGE_KEY);
+        }
+      } else {
+        const lastSeenVersion = localStorage.getItem(LAST_SEEN_VERSION_STORAGE_KEY);
+        let backupVersion = "";
+        try {
+          const backup = JSON.parse(localStorage.getItem("selah-update-backup-v1") || "{}") as { version?: string };
+          backupVersion = backup.version || "";
+        } catch {
+          backupVersion = "";
+        }
+        const updateRefreshVersion = searchParams.has("updated") ? backupVersion || lastSeenVersion || "" : "";
+        if (updateRefreshVersion && compareVersions(APP_VERSION, updateRefreshVersion) > 0) {
+          void showReleaseNotesFromManifest(updateRefreshVersion);
+        } else if (!lastSeenVersion || compareVersions(APP_VERSION, lastSeenVersion) > 0) {
+          localStorage.setItem(LAST_SEEN_VERSION_STORAGE_KEY, APP_VERSION);
+        }
+      }
       if (savedHighlights) {
         const parsed = JSON.parse(savedHighlights) as string[] | Record<string, HighlightColor>;
         setHighlights(Array.isArray(parsed) ? Object.fromEntries(parsed.map((key) => [key, "gold" as HighlightColor])) : parsed);
@@ -647,7 +726,7 @@ export default function Home() {
       }
       if (savedOriginalDefinition === "true") setReadOriginalDefinition(true);
       if (Number.isFinite(savedStudyPanelWidth)) setStudyPanelWidth(clampNumber(savedStudyPanelWidth, MIN_STUDY_PANEL_WIDTH, MAX_STUDY_PANEL_WIDTH));
-      const linkedPassage = passageFromSearchParams(new URLSearchParams(window.location.search));
+      const linkedPassage = passageFromSearchParams(searchParams);
       if (linkedPassage) {
         pendingSavedVerse.current = linkedPassage.verse;
         setSelectedBook(linkedPassage.book);
@@ -754,8 +833,11 @@ export default function Home() {
       setLatestAppVersion(nextVersion);
       setUpdateReleaseUrl(manifest.releaseUrl || "");
       if (compareVersions(nextVersion, APP_VERSION) > 0) {
+        const releases = releaseNotesForUpdate(manifest, APP_VERSION, nextVersion);
+        localStorage.setItem(UPDATE_NOTES_STORAGE_KEY, JSON.stringify({ fromVersion: APP_VERSION, toVersion: nextVersion, releases } satisfies PendingReleaseNotes));
         setUpdateStatus("available");
-        setUpdateMessage(`Version ${nextVersion} is available.`);
+        setUpdateMessage(`Version ${nextVersion} is available. Refreshing Selah now...`);
+        window.setTimeout(() => applyAppUpdate(manifest.releaseUrl || ""), 900);
       } else {
         setUpdateStatus("current");
         setUpdateMessage("Selah is up to date.");
@@ -766,9 +848,9 @@ export default function Home() {
     }
   };
 
-  const applyAppUpdate = () => {
+  const applyAppUpdate = (releaseUrl = updateReleaseUrl) => {
     snapshotSavedLibrary();
-    const target = updateReleaseUrl || window.location.href;
+    const target = releaseUrl || window.location.href;
     window.location.replace(target.includes("?") ? `${target}&updated=${Date.now()}` : `${target}?updated=${Date.now()}`);
   };
 
@@ -2131,6 +2213,36 @@ export default function Home() {
               })}
             </div>
           </div>
+        </section>
+      )}
+
+      {releaseNotesModal && (
+        <section className="release-notes-modal" aria-modal="true" role="dialog" aria-label="Selah update notes" onClick={() => setReleaseNotesModal(null)}>
+          <section className="release-notes-window" onClick={(event) => event.stopPropagation()}>
+            <div className="release-notes-heading">
+              <div>
+                <span>SELAH UPDATED</span>
+                <strong>Version {releaseNotesModal.toVersion}</strong>
+                <small>Updated from {releaseNotesModal.fromVersion}</small>
+              </div>
+              <button className="ui-close-button" onClick={() => setReleaseNotesModal(null)} aria-label="Close update notes">×</button>
+            </div>
+            <div className="release-notes-body">
+              {releaseNotesModal.releases.map((release) => (
+                <article className="release-note-card" key={release.version}>
+                  <div>
+                    <span>{release.releasedAt || "Latest release"}</span>
+                    <strong>{release.title || `Version ${release.version}`}</strong>
+                    <small>Version {release.version}</small>
+                  </div>
+                  <ul>
+                    {(release.changes || []).map((change) => <li key={change}>{change}</li>)}
+                  </ul>
+                </article>
+              ))}
+            </div>
+            <button className="release-notes-done" onClick={() => setReleaseNotesModal(null)}>Continue reading</button>
+          </section>
         </section>
       )}
 
