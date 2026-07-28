@@ -9,22 +9,23 @@ The inspiration for the project was two things. I love the YouVersion mobile app
 I hope this project blesses you. It's been fun working on it. And if there's any suggestions, I would love to hear them. 
 
 Core features:
-Verse highlighting
-<img width="1895" height="900" alt="image" src="https://github.com/user-attachments/assets/eef91c27-7659-4a06-88ad-b7efafd338ba" />
 
-Inline note taking
-<img width="1416" height="898" alt="image" src="https://github.com/user-attachments/assets/f8af3361-43d9-4ded-967e-9fb2fa65db68" />
+- Multiple theme support Green Dark, True Dark, and light. 
+- Read aloud capability across the whole application. 
+- Verse highlighting in multiple colors. 
+![[Pasted image 20260728125850.png]]
 
-Built in commentary panel for each chapter (Matthew Henry’s Concise Commentary on the Whole Bible)
-Read aloud with diverse highlighted. 
-Original language panel that allows the user to select individual words and will read and pronounce the word in the original language. Disclaimer this feature in particular I would caution against using one hundred percent. I am by no means a linguist. So make sure to double check any information that comes from this feature. 
-<img width="1938" height="899" alt="image" src="https://github.com/user-attachments/assets/7612282d-06b6-4818-8143-b16195032739" />
+- Inline note taking
 
+- ![[Pasted image 20260728125353.png]]
+ Built in commentary panel for each chapter (Matthew Henry’s Concise Commentary on the Whole Bible)
+ 
+![[Pasted image 20260728130621.png]]
+ Read aloud with diverse highlighted. 
+ Original language panel that allows the user to select individual words and will read and pronounce the word in the original language. Disclaimer this feature in particular I would caution against using one hundred percent. I am by no means a linguist. So make sure to double check any information that comes from this feature. 
 
-
-
-
-
+Whole Bible keyword search (Still needs to be refined.)
+![[Pasted image 20260728132045.png]]
 
 
 Quick setup guide
@@ -35,3 +36,24 @@ Quick setup guide
 4. Run npm install.
 5. Run npm run dev.
 6. Open the local URL it prints.
+
+Version 2.0 release notes
+
+Added Bible search
+Added additional themes. 
+added a saved section for highlighted verses as well as notes. 
+Added two additional historically-based commentaries. 
+Added a commentary info panel. 
+Added the functionality to hyperlink any scripture references in the commentary and allow the user to jump to them. 
+Added a section to allow the user to import their own audio if it is presented chapter by chapter and allows the user to hear that audio in the app itself. 
+	Note: the app does not ship with a proper audio bible that has a better reading voice than The Microsoft TTS voices. But if I find one, give the user the option, download it, and plug it into the app, 
+I also added the function to check for updates against the most recent repo.
+
+General UI enhancements and tweaks 
+- You can now enlarge the commentary window. 
+- I also added pagination for the multiple sections for each commentary piece in the chapter. 
+- Fixed most of the issues with some of the themes having problems with certain types of text being 
+
+
+known bugs
+- There's a known issue with the pencil icon when trying to highlight a verse in true dark, green dark theme. The colors are not shown when selecting. The user's chosen highlight color, but once it is selected, the color is shown.
