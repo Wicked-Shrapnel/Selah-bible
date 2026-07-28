@@ -43,3 +43,6 @@ next-env.d.ts
 
 # large local Bible audio imports
 /public/audio/
+
+# packaged source exports
+/selah-bible-reader-*.zip

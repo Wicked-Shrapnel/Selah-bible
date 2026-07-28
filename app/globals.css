@@ -152,6 +152,8 @@ button, select { cursor: pointer; }
 .settings-card label > span { color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; }
 .settings-card select { grid-column: 2 / -1; width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 6px; padding: 8px; background: white; font-size: 11px; }
 .settings-card input { accent-color: var(--sage); width: 100%; }
+.settings-card .settings-text-field { grid-template-columns: 72px minmax(0, 1fr); margin-bottom: 13px; padding-bottom: 13px; border-bottom: 1px solid var(--line); }
+.settings-card .settings-text-field input { min-width: 0; border: 1px solid var(--line); border-radius: 6px; padding: 8px; color: var(--ink); background: white; font-size: 11px; }
 .settings-card label strong { font-size: 10px; text-align: right; }
 .settings-card p { margin: 0; color: var(--muted); font: 13px/1.55 Georgia, serif; }
 .settings-card label.settings-checkbox input { width: 17px; height: 17px; justify-self: start; }
@@ -554,6 +556,7 @@ button, select { cursor: pointer; }
 :root[data-theme="dark"] .search-library-heading > button,
 :root[data-theme="dark"] .saved-library-heading > button { background: #202821; }
 :root[data-theme="dark"] .settings-card select,
+:root[data-theme="dark"] .settings-card .settings-text-field input,
 :root[data-theme="dark"] .search-library-box input,
 :root[data-theme="dark"] .inline-note-editor textarea,
 :root[data-theme="dark"] .notes-card textarea { color: var(--ink); border-color: var(--line); background: #111713; }
@@ -795,6 +798,7 @@ button, select { cursor: pointer; }
 :root[data-theme="true-dark"] .search-library-heading > button,
 :root[data-theme="true-dark"] .saved-library-heading > button { background: #1d2226; }
 :root[data-theme="true-dark"] .settings-card select,
+:root[data-theme="true-dark"] .settings-card .settings-text-field input,
 :root[data-theme="true-dark"] .search-library-box input,
 :root[data-theme="true-dark"] .inline-note-editor textarea,
 :root[data-theme="true-dark"] .notes-card textarea { color: var(--ink); border-color: var(--line); background: #101316; }
