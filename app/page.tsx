@@ -58,7 +58,7 @@ type BibleSearchResult = { book: Book; chapter: number; verse: number; reference
 type UpdateStatus = "idle" | "checking" | "current" | "available" | "error";
 type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string };
 
-const APP_VERSION = "2.0.3";
+const APP_VERSION = "2.0.4";
 const APP_VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/Wicked-Shrapnel/Selah-bible/main/public/app-version.json";
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const MIN_STUDY_PANEL_WIDTH = 380;
@@ -538,6 +538,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<BibleSearchResult[]>([]);
   const [searchStatus, setSearchStatus] = useState<"idle" | "searching" | "ready" | "error">("idle");
+  const [activeSnippetReadKey, setActiveSnippetReadKey] = useState("");
   const [isReadingCommentary, setIsReadingCommentary] = useState(false);
   const [isCommentaryPaused, setIsCommentaryPaused] = useState(false);
   const [commentaryWordIndex, setCommentaryWordIndex] = useState<number | null>(null);
@@ -874,6 +875,7 @@ export default function Home() {
       setIsReadingCommentary(false);
       setIsCommentaryPaused(false);
       setCommentaryWordIndex(null);
+      setActiveSnippetReadKey("");
       setActiveVerse(null);
       setSelectedForHighlight([]);
       setInlineNoteVerse(null);
@@ -907,6 +909,7 @@ export default function Home() {
     setIsReadingCommentary(false);
     setIsCommentaryPaused(false);
     setCommentaryWordIndex(null);
+    setActiveSnippetReadKey("");
     setActiveVerse(null);
   }, []);
 
@@ -1101,6 +1104,7 @@ export default function Home() {
     }
     setIsReading(true);
     setIsPaused(false);
+    setActiveSnippetReadKey("");
     const index = Math.max(0, verses.findIndex((verse) => verse.id === verseId));
     if (shouldUseChapterMp3Audio) {
       void playSavedChapterAudio(index, session);
@@ -1127,6 +1131,7 @@ export default function Home() {
     cancelled.current = false;
     setIsReading(true);
     setIsPaused(false);
+    setActiveSnippetReadKey("");
     if (shouldUseChapterMp3Audio) void playSavedChapterAudio(index, session);
     else if (savedAudioChapters.has(chapterAudioKey)) void playSavedVerse(index, false, session);
     else playBrowserVerse(index, session);
@@ -1630,12 +1635,26 @@ export default function Home() {
   const readSavedReference = (saved: SavedReference) => {
     const text = savedVerseText(saved);
     if (!text || !("speechSynthesis" in window)) return;
+    const readKey = `saved:${saved.key}`;
+    if (activeSnippetReadKey === readKey && isReading) {
+      togglePause();
+      return;
+    }
     stopReading();
     const utterance = new SpeechSynthesisUtterance(`${saved.reference}. ${text}`);
     utterance.rate = rate;
     utterance.voice = voices.find((voice) => voice.name === voiceName) || bestVoice(voices) || null;
-    utterance.onend = () => setIsReading(false);
-    utterance.onerror = () => setIsReading(false);
+    utterance.onend = () => {
+      setIsReading(false);
+      setIsPaused(false);
+      setActiveSnippetReadKey("");
+    };
+    utterance.onerror = () => {
+      setIsReading(false);
+      setIsPaused(false);
+      setActiveSnippetReadKey("");
+    };
+    setActiveSnippetReadKey(readKey);
     setIsReading(true);
     setIsPaused(false);
     window.speechSynthesis.speak(utterance);
@@ -1643,12 +1662,26 @@ export default function Home() {
 
   const readSearchResult = (result: BibleSearchResult) => {
     if (!result.text || !("speechSynthesis" in window)) return;
+    const readKey = `search:${result.reference}`;
+    if (activeSnippetReadKey === readKey && isReading) {
+      togglePause();
+      return;
+    }
     stopReading();
     const utterance = new SpeechSynthesisUtterance(`${result.reference}. ${result.text}`);
     utterance.rate = rate;
     utterance.voice = voices.find((voice) => voice.name === voiceName) || bestVoice(voices) || null;
-    utterance.onend = () => setIsReading(false);
-    utterance.onerror = () => setIsReading(false);
+    utterance.onend = () => {
+      setIsReading(false);
+      setIsPaused(false);
+      setActiveSnippetReadKey("");
+    };
+    utterance.onerror = () => {
+      setIsReading(false);
+      setIsPaused(false);
+      setActiveSnippetReadKey("");
+    };
+    setActiveSnippetReadKey(readKey);
     setIsReading(true);
     setIsPaused(false);
     window.speechSynthesis.speak(utterance);
@@ -1934,13 +1967,14 @@ export default function Home() {
                   <span>ORIGINAL LANGUAGE</span>
                   <strong>Pronunciation</strong>
                 </div>
-                <label className="settings-checkbox">
+                <label className="settings-toggle">
                   <span>Definition</span>
                   <input type="checkbox" checked={readOriginalDefinition} onChange={(event) => {
                     const enabled = event.target.checked;
                     setReadOriginalDefinition(enabled);
                     localStorage.setItem("selah-read-original-definition", String(enabled));
                   }} />
+                  <i aria-hidden="true" />
                   <strong>{readOriginalDefinition ? "On" : "Off"}</strong>
                 </label>
                 <p className="settings-help">When enabled, Selah reads the English definition immediately after pronouncing the Hebrew or Greek word.</p>
@@ -1996,6 +2030,7 @@ export default function Home() {
                 <div className="saved-list">
                   {recentHighlights.length ? recentHighlights.map(({ saved, color }) => {
                     const text = savedVerseText(saved);
+                    const isSavedReading = activeSnippetReadKey === `saved:${saved.key}` && isReading;
                     return (
                       <div className="saved-list-item" key={saved.key}>
                         <button className="saved-jump" onClick={() => openSavedReference(saved)}>
@@ -2003,7 +2038,9 @@ export default function Home() {
                           <span><strong>{saved.reference}</strong><small>{text ? excerptText(text) : "Loading verse text..."}</small></span>
                           <b>Jump</b>
                         </button>
-                        <button className="saved-read-aloud icon-read-aloud" onClick={() => readSavedReference(saved)} disabled={!text} aria-label={`Read ${saved.reference} aloud`} title="Read aloud"><span className="play-read-aloud" aria-hidden="true">▶</span></button>
+                        <button className="saved-read-aloud icon-read-aloud" onClick={() => readSavedReference(saved)} disabled={!text} aria-label={isSavedReading && !isPaused ? `Pause reading ${saved.reference}` : isSavedReading && isPaused ? `Resume reading ${saved.reference}` : `Read ${saved.reference} aloud`} title={isSavedReading && !isPaused ? "Pause read aloud" : isSavedReading && isPaused ? "Resume read aloud" : "Read aloud"}>
+                          {isSavedReading && !isPaused ? <span className="pause-read-aloud" aria-hidden="true">Ⅱ</span> : <span className="play-read-aloud" aria-hidden="true">▶</span>}
+                        </button>
                       </div>
                     );
                   }) : <p>No saved highlights yet.</p>}
@@ -2012,6 +2049,7 @@ export default function Home() {
                 <div className="saved-list">
                   {recentNotes.length ? recentNotes.map(({ saved, value }) => {
                     const text = savedVerseText(saved);
+                    const isSavedReading = activeSnippetReadKey === `saved:${saved.key}` && isReading;
                     return (
                       <div className="saved-list-item" key={saved.key}>
                         <button className="saved-jump" onClick={() => openSavedReference(saved)}>
@@ -2019,7 +2057,9 @@ export default function Home() {
                           <span><strong>{saved.reference}</strong><small>{value}</small></span>
                           <b>Jump</b>
                         </button>
-                        <button className="saved-read-aloud icon-read-aloud" onClick={() => readSavedReference(saved)} disabled={!text} aria-label={`Read ${saved.reference} aloud`} title="Read aloud"><span className="play-read-aloud" aria-hidden="true">▶</span></button>
+                        <button className="saved-read-aloud icon-read-aloud" onClick={() => readSavedReference(saved)} disabled={!text} aria-label={isSavedReading && !isPaused ? `Pause reading ${saved.reference}` : isSavedReading && isPaused ? `Resume reading ${saved.reference}` : `Read ${saved.reference} aloud`} title={isSavedReading && !isPaused ? "Pause read aloud" : isSavedReading && isPaused ? "Resume read aloud" : "Read aloud"}>
+                          {isSavedReading && !isPaused ? <span className="pause-read-aloud" aria-hidden="true">Ⅱ</span> : <span className="play-read-aloud" aria-hidden="true">▶</span>}
+                        </button>
                       </div>
                     );
                   }) : <p>No saved notes yet.</p>}
@@ -2059,7 +2099,9 @@ export default function Home() {
             </div>
             <div className="search-results-list">
               {searchStatus === "ready" && searchResults.length === 0 && <p>No verses found. Try a shorter word or phrase.</p>}
-              {searchResults.map((result) => (
+              {searchResults.map((result) => {
+                const isSearchReading = activeSnippetReadKey === `search:${result.reference}` && isReading;
+                return (
                 <div
                   key={`${result.reference}-${result.rank}-${result.kind}`}
                   className={`search-result-card ${result.kind === "suggestion" ? "search-suggestion" : ""}`}
@@ -2079,13 +2121,14 @@ export default function Home() {
                     type="button"
                     className="search-read-aloud"
                     onClick={(event) => { event.stopPropagation(); void readSearchResult(result); }}
-                    aria-label={isReading && !isPaused ? `Pause reading ${result.reference}` : `Read ${result.reference} aloud`}
-                    title={isReading && !isPaused ? "Pause read aloud" : "Read aloud"}
+                    aria-label={isSearchReading && !isPaused ? `Pause reading ${result.reference}` : isSearchReading && isPaused ? `Resume reading ${result.reference}` : `Read ${result.reference} aloud`}
+                    title={isSearchReading && !isPaused ? "Pause read aloud" : isSearchReading && isPaused ? "Resume read aloud" : "Read aloud"}
                   >
-                    {isReading && !isPaused ? <span className="pause-read-aloud" aria-hidden="true">Ⅱ</span> : <span className="play-read-aloud" aria-hidden="true">▶</span>}
+                    {isSearchReading && !isPaused ? <span className="pause-read-aloud" aria-hidden="true">Ⅱ</span> : <span className="play-read-aloud" aria-hidden="true">▶</span>}
                   </button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
