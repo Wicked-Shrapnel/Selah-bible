@@ -542,6 +542,18 @@ export default function Home() {
     });
   }, [verses]);
 
+  useEffect(() => {
+    if (!commentaryResourceOpen) return;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousRootOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousRootOverflow;
+    };
+  }, [commentaryResourceOpen]);
+
   const loadBibleChapter = useCallback(async (bookName: string, chapterNumber: number) => {
     const fileName = bibleFileName(bookName);
     const cached = bibleBookCache.current[fileName];
