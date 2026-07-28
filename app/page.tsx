@@ -60,11 +60,12 @@ type ReleaseNote = { version: string; title?: string; releasedAt?: string; chang
 type PendingReleaseNotes = { fromVersion: string; toVersion: string; releases: ReleaseNote[] };
 type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string; releases?: ReleaseNote[]; changelog?: ReleaseNote[]; notes?: string[] };
 
-const APP_VERSION = "2.0.5";
+const APP_VERSION = "2.0.6";
 const APP_VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/Wicked-Shrapnel/Selah-bible/main/public/app-version.json";
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const UPDATE_NOTES_STORAGE_KEY = "selah-pending-release-notes-v1";
 const LAST_SEEN_VERSION_STORAGE_KEY = "selah-last-seen-version-v1";
+const DEFAULT_READ_ALOUD_RATE = 0.92;
 const MIN_STUDY_PANEL_WIDTH = 380;
 const MAX_STUDY_PANEL_WIDTH = 680;
 const OFFICIAL_AUDIO_ENABLED = false;
@@ -517,7 +518,7 @@ export default function Home() {
   const [selectedVerse, setSelectedVerse] = useState(1);
   const [isReading, setIsReading] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [rate, setRate] = useState(0.92);
+  const [rate, setRate] = useState(DEFAULT_READ_ALOUD_RATE);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceName, setVoiceName] = useState("");
   const [savedAudioChapters, setSavedAudioChapters] = useState<Set<string>>(new Set());
@@ -566,7 +567,6 @@ export default function Home() {
   const [isCommentaryPaused, setIsCommentaryPaused] = useState(false);
   const [commentaryWordIndex, setCommentaryWordIndex] = useState<number | null>(null);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
-  const [latestAppVersion, setLatestAppVersion] = useState(APP_VERSION);
   const [updateReleaseUrl, setUpdateReleaseUrl] = useState("");
   const [updateMessage, setUpdateMessage] = useState("Ready to check for a newer Selah build.");
   const [releaseNotesModal, setReleaseNotesModal] = useState<PendingReleaseNotes | null>(null);
@@ -830,7 +830,6 @@ export default function Home() {
       const manifest = await response.json() as AppVersionManifest;
       const nextVersion = manifest.latestVersion || manifest.version;
       if (!nextVersion) throw new Error("Version manifest is missing a version");
-      setLatestAppVersion(nextVersion);
       setUpdateReleaseUrl(manifest.releaseUrl || "");
       if (compareVersions(nextVersion, APP_VERSION) > 0) {
         const releases = releaseNotesForUpdate(manifest, APP_VERSION, nextVersion);
@@ -2022,7 +2021,12 @@ export default function Home() {
                 <strong>{davidFallbackVoice ? davidFallbackVoice.name : "Microsoft David"}</strong>
                 <p>All browser-generated read aloud is limited to David. Other installed or cloud voices are no longer shown.</p>
               </div>
-              <label className="speed-control"><span>Speed</span><input type="range" min="0.7" max="1.25" step="0.05" value={rate} onChange={(event) => setRate(Number(event.target.value))} /><strong>{rate.toFixed(2)}x</strong></label>
+              <label className="speed-control">
+                <span>Speed</span>
+                <input type="range" min="0.7" max="1.25" step="0.05" value={rate} onChange={(event) => setRate(Number(event.target.value))} />
+                <strong>{rate.toFixed(2)}x</strong>
+                <button type="button" onClick={() => setRate(DEFAULT_READ_ALOUD_RATE)}>Default</button>
+              </label>
             </div>
             <div className="settings-side-stack">
               <div className="settings-card">
@@ -2057,7 +2061,6 @@ export default function Home() {
                     localStorage.setItem("selah-read-original-definition", String(enabled));
                   }} />
                   <i aria-hidden="true" />
-                  <strong>{readOriginalDefinition ? "On" : "Off"}</strong>
                 </label>
                 <p className="settings-help">When enabled, Selah reads the English definition immediately after pronouncing the Hebrew or Greek word.</p>
               </div>
@@ -2066,14 +2069,10 @@ export default function Home() {
                   <span>APP UPDATES</span>
                   <strong>Version {APP_VERSION}</strong>
                 </div>
-                <div className={`update-status ${updateStatus}`}>
-                  <span>{updateStatus === "available" ? "Update available" : updateStatus === "checking" ? "Checking" : updateStatus === "current" ? "Up to date" : updateStatus === "error" ? "Check failed" : "Manual check"}</span>
-                  <strong>{updateMessage}</strong>
-                  <p>Latest checked version: {latestAppVersion}</p>
-                </div>
                 <div className="settings-action-row">
                   <button onClick={checkForAppUpdate} disabled={updateStatus === "checking"}>{updateStatus === "checking" ? "Checking..." : "Check for update"}</button>
                   {updateStatus === "available" && <button className="primary" onClick={applyAppUpdate}>Update now</button>}
+                  <span className={`update-inline-message ${updateStatus}`}>{updateMessage}</span>
                 </div>
               </div>
             </div>
