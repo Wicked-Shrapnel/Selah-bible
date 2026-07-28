@@ -21,14 +21,6 @@ Original language panel that allows the user to select individual words and will
 <img width="1938" height="899" alt="image" src="https://github.com/user-attachments/assets/7612282d-06b6-4818-8143-b16195032739" />
 
 
-Future plans:
-Implement a better read aloud voice. 
-Implement a second commentary alongside the first one to aid in the reader understanding historical context. 
-Improve the original language feature. 
-Add other versions if I can find a way to do it legally. Preferably New King James. 
-Add scripture cross-references and version comparison. 
-Maybe do integration with Youversion so that a user can import their highlighted versus. 
-Implement a daily streak feature. 
 
 
 
