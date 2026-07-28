@@ -676,12 +676,6 @@ export default function Home() {
   }, [selectedBook.name, chapter, commentaryView]);
 
   useEffect(() => {
-    if (!commentaryReferenceTab) return;
-    const stillOnReferencedChapter = commentaryReferenceTab.passage.book.name === selectedBook.name && commentaryReferenceTab.passage.chapter === chapter;
-    if (!stillOnReferencedChapter) setCommentaryReferenceTab(null);
-  }, [commentaryReferenceTab, selectedBook.name, chapter]);
-
-  useEffect(() => {
     let ignore = false;
     async function loadChapter() {
       setIsLoading(true);
@@ -1576,7 +1570,10 @@ export default function Home() {
           type="button"
           key={`commentary-reference-${activeLink.start}-${href}`}
           className="commentary-passage-link"
-          onClick={() => openCommentaryReference(reference)}
+          onClick={(event) => {
+            event.stopPropagation();
+            openCommentaryReference(reference);
+          }}
           aria-label={`Open ${label} in this page`}
         >
           {activeLinkNodes}
@@ -1921,6 +1918,19 @@ export default function Home() {
 
       <div className={`workspace ${studyCollapsed ? "study-collapsed" : ""} ${isResizingStudy ? "resizing-study" : ""}`}>
         <article className="reader">
+          {commentaryReferenceTab && (
+            <div className="commentary-reference-tab reader-reference-tab">
+              <div>
+                <span>REFERENCE PASSAGE</span>
+                <strong>{commentaryReferenceTab.reference.label}</strong>
+                <small>
+                  Showing {commentaryReferenceTab.passage.book.name} {commentaryReferenceTab.passage.chapter}:{commentaryReferenceTab.passage.verse}
+                  {" "}— close this to return to {commentaryReferenceTab.previous.book.name} {commentaryReferenceTab.previous.chapter}:{commentaryReferenceTab.previous.verse}
+                </small>
+              </div>
+              <button onClick={closeCommentaryReference} aria-label="Close referenced passage">×</button>
+            </div>
+          )}
           <div className="reader-heading">
             <div>
               <p className="eyebrow">{selectedBook.testament.toUpperCase()}</p>
@@ -2069,16 +2079,6 @@ export default function Home() {
               {studyTab === "commentary" ? (
                 <div className="study-content">
                   <div className="study-reference"><span>{selected?.reference || `${selectedBook.name} ${chapter}`}</span><small>Public domain</small></div>
-                  {commentaryReferenceTab && (
-                    <div className="commentary-reference-tab">
-                      <div>
-                        <span>REFERENCE PASSAGE</span>
-                        <strong>{commentaryReferenceTab.reference.label}</strong>
-                        <small>Jumping to {commentaryReferenceTab.passage.book.name} {commentaryReferenceTab.passage.chapter}:{commentaryReferenceTab.passage.verse}</small>
-                      </div>
-                      <button onClick={closeCommentaryReference} aria-label="Close referenced passage">×</button>
-                    </div>
-                  )}
                   <div className="commentary-source-tabs" role="tablist" aria-label="Commentary source">
                     <button
                       className={commentaryView === "expository" ? "active" : ""}
@@ -2188,7 +2188,18 @@ export default function Home() {
                             {activeCommentaryEntry.references.map((reference, index) => {
                               const href = commentaryReferenceHref(reference);
                               return href ? (
-                                <button key={`${reference.osis}-${index}`} type="button" className="commentary-passage-link" onClick={() => openCommentaryReference(reference)} aria-label={`Open ${reference.label} in this page`}>{reference.label}</button>
+                                <button
+                                  key={`${reference.osis}-${index}`}
+                                  type="button"
+                                  className="commentary-passage-link"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    openCommentaryReference(reference);
+                                  }}
+                                  aria-label={`Open ${reference.label} in this page`}
+                                >
+                                  {reference.label}
+                                </button>
                               ) : <span key={`${reference.osis}-${index}`}>{reference.label}</span>;
                             })}
                           </div>
