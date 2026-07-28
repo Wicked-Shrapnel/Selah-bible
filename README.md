@@ -14,19 +14,18 @@ I hope this project blesses you. It's been fun working on it. And if there's any
 - Multiple theme support Green Dark, True Dark, and light.
 - Read aloud capability across the whole application.
 - Verse highlighting in multiple colors.
-![[Pasted image 20260728125850.png]]
+<img width="1923" height="878" alt="image" src="https://github.com/user-attachments/assets/8310a5cb-b400-4d51-a09b-70e7bec0ffaf" />
 
 - Inline note taking
 
-- ![[Pasted image 20260728125353.png]]
+<img width="1330" height="783" alt="image" src="https://github.com/user-attachments/assets/eae37ccc-0f1f-4c38-b6b1-a47db852b67f" />
   Built in commentary panel for each chapter (Matthew Henry’s Concise Commentary on the Whole Bible)
 
-![[Pasted image 20260728130621.png]]
+<img width="792" height="799" alt="image" src="https://github.com/user-attachments/assets/5bf3b4e4-6046-44fe-9351-01a7d05decf3" />
 Read aloud with diverse highlighted.
 Original language panel that allows the user to select individual words and will read and pronounce the word in the original language. Disclaimer this feature in particular I would caution against using one hundred percent. I am by no means a linguist. So make sure to double check any information that comes from this feature.
 
 Whole Bible keyword search (Still needs to be refined.)
-![[Pasted image 20260728132045.png]]
 
 ## Quick setup guide
 
