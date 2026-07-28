@@ -58,7 +58,7 @@ type BibleSearchResult = { book: Book; chapter: number; verse: number; reference
 type UpdateStatus = "idle" | "checking" | "current" | "available" | "error";
 type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string };
 
-const APP_VERSION = "2.0.1";
+const APP_VERSION = "2.0.2";
 const DEFAULT_APP_VERSION_MANIFEST_URL = "/app-version.json";
 const UPDATE_MANIFEST_URL_STORAGE_KEY = "selah-update-manifest-url";
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
