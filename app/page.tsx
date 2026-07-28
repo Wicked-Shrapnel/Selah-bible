@@ -1958,7 +1958,6 @@ export default function Home() {
 
       {commentaryResourceOpen && (
         <section className="commentary-resource-modal" aria-modal="true" role="dialog" aria-label="Commentary resource details">
-          <button className="picker-backdrop" onClick={closeCommentaryResourceModal} aria-label="Close commentary resource details" />
           <section className="commentary-resource-window">
             <div className="commentary-resource-heading">
               <div>
