@@ -325,6 +325,7 @@ button, select { cursor: pointer; }
 .study-content { position: relative; padding-top: 16px; }
 .study-reference { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 7px; padding-right: 24px; }
 .study-reference span { font: 700 18px Georgia, serif; }
+.commentary-study-reference { padding-right: 24px; }
 .study-reference button { border: 0; background: transparent; color: var(--muted); }
 .study-reference small { color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .commentary-source-tools { position: absolute; top: 16px; right: 0; display: flex; justify-content: flex-end; margin: 0; }
@@ -378,6 +379,11 @@ button, select { cursor: pointer; }
 .commentary-card-top button.active { color: var(--sage-dark); background: transparent; }
 .commentary-card-top .commentary-read-aloud { width: 34px; height: 30px; display: grid; place-items: center; padding: 0; border: 0; background: transparent; }
 .play-read-aloud { display: inline-block; color: currentColor; font-size: 16px; line-height: 1; transform: translateX(1px); }
+.pause-read-aloud { display: inline-block; color: currentColor; font-size: 16px; font-weight: 850; line-height: 1; transform: translateY(-1px); }
+.commentary-section-pager { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.commentary-section-pager button { width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 1px solid #cfd9d2; border-radius: 50%; color: var(--sage); background: var(--sage-soft); font-size: 22px; line-height: 1; }
+.commentary-section-pager button:disabled { cursor: default; opacity: .32; }
+.commentary-section-pager span { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .commentary-author { display: flex; align-items: center; gap: 10px; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--line); }
 .commentary-author > span { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 50%; background: var(--sage-soft); color: var(--sage); font: 700 9px Georgia, serif; }
 .commentary-author strong, .commentary-author small { display: block; }

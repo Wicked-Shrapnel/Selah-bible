@@ -1311,6 +1311,11 @@ export default function Home() {
       || [...entries].reverse().find((entry) => entry.anchorVerse <= selectedVerse)
       || entries[0];
   }, [commentaryData, selectedVerse]);
+  const activeCommentaryEntryIndex = useMemo(() => {
+    const entries = commentaryData?.entries || [];
+    if (!activeCommentaryEntry) return -1;
+    return entries.findIndex((entry) => entry === activeCommentaryEntry);
+  }, [activeCommentaryEntry, commentaryData]);
 
   const commentaryTokens = useMemo(() => activeCommentaryEntry?.text.split(/(\s+)/) || [], [activeCommentaryEntry]);
   const activeCommentaryReferenceLinks = useMemo(
@@ -1607,6 +1612,15 @@ export default function Home() {
   };
 
   const closeCommentaryResourceModal = () => setCommentaryResourceOpen(false);
+
+  const turnCommentarySection = (direction: -1 | 1) => {
+    const entries = commentaryData?.entries || [];
+    const nextEntry = entries[activeCommentaryEntryIndex + direction];
+    if (!nextEntry) return;
+    if (isReadingCommentary) stopReading();
+    setCommentaryWordIndex(null);
+    setSelectedVerse(nextEntry.verseStart);
+  };
 
   const toggleCommentaryReading = () => {
     if (!activeCommentaryEntry || !("speechSynthesis" in window)) return;
@@ -2223,7 +2237,7 @@ export default function Home() {
               </div>
               {studyTab === "commentary" ? (
                 <div className="study-content">
-                  <div className="study-reference"><span>{selected?.reference || `${selectedBook.name} ${chapter}`}</span><small>Public domain</small></div>
+                  <div className="study-reference commentary-study-reference"><span>{selected?.reference || `${selectedBook.name} ${chapter}`}</span></div>
                   <div className="commentary-source-tools">
                     <button
                       className="commentary-resource-info"
@@ -2317,7 +2331,7 @@ export default function Home() {
                         <div className="commentary-card-top">
                           <span className="card-label">{commentarySourceLabel(commentaryView).toUpperCase()} · {activeCommentaryEntry.heading.toUpperCase()}</span>
                           <button className={`commentary-read-aloud ${isReadingCommentary ? "active" : ""}`} onClick={toggleCommentaryReading} aria-label={isReadingCommentary && !isCommentaryPaused ? "Pause commentary" : "Read commentary aloud"} title={isReadingCommentary && !isCommentaryPaused ? "Pause commentary" : "Read commentary aloud"}>
-                            {isReadingCommentary && !isCommentaryPaused ? <span aria-hidden="true">Ⅱ</span> : <span className="play-read-aloud" aria-hidden="true">▶</span>}
+                            {isReadingCommentary && !isCommentaryPaused ? <span className="pause-read-aloud" aria-hidden="true">Ⅱ</span> : <span className="play-read-aloud" aria-hidden="true">▶</span>}
                           </button>
                         </div>
                         <h2>{selectedBook.name} {chapter}:{activeCommentaryEntry.verseStart}{activeCommentaryEntry.verseEnd !== activeCommentaryEntry.verseStart ? `–${activeCommentaryEntry.verseEnd}` : ""}</h2>
@@ -2334,6 +2348,13 @@ export default function Home() {
                         <a className="commentary-source" href={commentaryData.source.sourceUrl} target="_blank" rel="noreferrer">
                           {commentaryData.source.edition} · {commentaryData.source.license} ↗
                         </a>
+                        {commentaryData.entries.length > 1 && (
+                          <div className="commentary-section-pager" aria-label="Commentary sections">
+                            <button onClick={() => turnCommentarySection(-1)} disabled={activeCommentaryEntryIndex <= 0} aria-label="Previous commentary section">‹</button>
+                            <span>{activeCommentaryEntryIndex + 1} of {commentaryData.entries.length}</span>
+                            <button onClick={() => turnCommentarySection(1)} disabled={activeCommentaryEntryIndex < 0 || activeCommentaryEntryIndex >= commentaryData.entries.length - 1} aria-label="Next commentary section">›</button>
+                          </div>
+                        )}
                       </div>
                       {activeCommentaryEntry.references.length > 0 && (
                         <div className="cross-references">
@@ -2354,17 +2375,6 @@ export default function Home() {
                             })}
                           </div>
                         </div>
-                      )}
-                      {commentaryData.entries.length > 1 && (
-                        <details className="chapter-commentary-list">
-                          <summary>Browse all {commentaryData.entries.length} sections in this chapter</summary>
-                          {commentaryData.entries.map((entry) => (
-                            <button key={`${entry.anchorVerse}-${entry.heading}`} onClick={() => setSelectedVerse(entry.verseStart)}>
-                              <strong>{entry.heading}</strong>
-                              <span>{entry.text.slice(0, 105)}{entry.text.length > 105 ? "…" : ""}</span>
-                            </button>
-                          ))}
-                        </details>
                       )}
                     </>
                   ) : (
