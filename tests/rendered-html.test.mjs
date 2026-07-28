@@ -183,6 +183,7 @@ test("includes searchable passage selection, saved place, and commentary audio",
   assert.match(page, /commentaryReferenceHref/);
   assert.match(page, /commentaryReferenceLinks/);
   assert.match(page, /commentary-passage-link/);
+  assert.doesNotMatch(page, /handleCommentaryReferenceClick/);
   assert.match(page, /commentaryReferenceTab/);
   assert.match(page, /closeCommentaryReference/);
   assert.match(page, /reader-reference-tab/);

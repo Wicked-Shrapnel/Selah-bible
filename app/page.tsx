@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 
 type Verse = { id: number; reference: string; text: string };
 type Book = { name: string; chapters: number; testament: "Old Testament" | "New Testament" };
@@ -1491,13 +1491,6 @@ export default function Home() {
     }
   };
 
-  const handleCommentaryReferenceClick = (event: ReactMouseEvent<HTMLAnchorElement>, reference: CommentaryReference) => {
-    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    event.preventDefault();
-    event.stopPropagation();
-    openCommentaryReference(reference);
-  };
-
   const closeCommentaryReference = () => {
     if (!commentaryReferenceTab) return;
     const previous = commentaryReferenceTab.previous;
@@ -1577,7 +1570,6 @@ export default function Home() {
           href={href}
           key={`commentary-reference-${activeLink.start}-${href}`}
           className="commentary-passage-link"
-          onClick={(event) => handleCommentaryReferenceClick(event, reference)}
           aria-label={`Open ${label} in this page`}
         >
           {activeLinkNodes}
@@ -2196,7 +2188,6 @@ export default function Home() {
                                   key={`${reference.osis}-${index}`}
                                   href={href}
                                   className="commentary-passage-link"
-                                  onClick={(event) => handleCommentaryReferenceClick(event, reference)}
                                   aria-label={`Open ${reference.label} in this page`}
                                 >
                                   {reference.label}
