@@ -59,8 +59,7 @@ type UpdateStatus = "idle" | "checking" | "current" | "available" | "error";
 type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string };
 
 const APP_VERSION = "2.0.2";
-const DEFAULT_APP_VERSION_MANIFEST_URL = "/app-version.json";
-const UPDATE_MANIFEST_URL_STORAGE_KEY = "selah-update-manifest-url";
+const APP_VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/Wicked-Shrapnel/Selah-bible/main/public/app-version.json";
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const MIN_STUDY_PANEL_WIDTH = 380;
 const MAX_STUDY_PANEL_WIDTH = 680;
@@ -85,32 +84,6 @@ function compareVersions(left: string, right: string) {
     if (difference !== 0) return difference;
   }
   return 0;
-}
-
-function resolveUpdateManifestUrl(input: string) {
-  const trimmed = input.trim();
-  if (!trimmed) return DEFAULT_APP_VERSION_MANIFEST_URL;
-
-  if (!trimmed.includes("://")) {
-    const repoMatch = trimmed.match(/^([^/]+)\/([^/]+)(?:\/(tree|blob)\/([^/]+))?/);
-    if (repoMatch) {
-      const [, owner, repo, , branch = "main"] = repoMatch;
-      return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/public/app-version.json`;
-    }
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.hostname === "github.com" || parsed.hostname === "www.github.com") {
-      const [owner, repo, kind, branch] = parsed.pathname.split("/").filter(Boolean);
-      if (owner && repo) {
-        return `https://raw.githubusercontent.com/${owner}/${repo}/${kind === "tree" || kind === "blob" ? branch || "main" : "main"}/public/app-version.json`;
-      }
-    }
-    return parsed.href;
-  } catch {
-    return trimmed;
-  }
 }
 
 const books: Book[] = [
@@ -572,7 +545,6 @@ export default function Home() {
   const [latestAppVersion, setLatestAppVersion] = useState(APP_VERSION);
   const [updateReleaseUrl, setUpdateReleaseUrl] = useState("");
   const [updateMessage, setUpdateMessage] = useState("Ready to check for a newer Selah build.");
-  const [updateManifestUrl, setUpdateManifestUrl] = useState(DEFAULT_APP_VERSION_MANIFEST_URL);
   const cancelled = useRef(false);
   const activeAudio = useRef<HTMLAudioElement | null>(null);
   const syncedAudioVerse = useRef<number | null>(null);
@@ -651,7 +623,6 @@ export default function Home() {
       const savedAudioSource = localStorage.getItem("selah-audio-source") as AudioSourcePreference | null;
       const savedOriginalDefinition = localStorage.getItem("selah-read-original-definition");
       const savedStudyPanelWidth = Number(localStorage.getItem(STUDY_PANEL_WIDTH_STORAGE_KEY));
-      const savedUpdateManifestUrl = localStorage.getItem(UPDATE_MANIFEST_URL_STORAGE_KEY);
       let restoredPlace: { place: SavedPlace; book: Book } | null = null;
       if (savedHighlights) {
         const parsed = JSON.parse(savedHighlights) as string[] | Record<string, HighlightColor>;
@@ -675,7 +646,6 @@ export default function Home() {
       }
       if (savedOriginalDefinition === "true") setReadOriginalDefinition(true);
       if (Number.isFinite(savedStudyPanelWidth)) setStudyPanelWidth(clampNumber(savedStudyPanelWidth, MIN_STUDY_PANEL_WIDTH, MAX_STUDY_PANEL_WIDTH));
-      if (savedUpdateManifestUrl?.trim()) setUpdateManifestUrl(savedUpdateManifestUrl.trim());
       const linkedPassage = passageFromSearchParams(new URLSearchParams(window.location.search));
       if (linkedPassage) {
         pendingSavedVerse.current = linkedPassage.verse;
@@ -760,7 +730,6 @@ export default function Home() {
       "selah-theme",
       "selah-audio-source",
       "selah-read-original-definition",
-      UPDATE_MANIFEST_URL_STORAGE_KEY,
       STUDY_PANEL_WIDTH_STORAGE_KEY,
     ];
     const saved: Record<string, string> = {};
@@ -775,8 +744,7 @@ export default function Home() {
     setUpdateStatus("checking");
     setUpdateMessage("Checking for the latest Selah build...");
     try {
-      const manifestUrl = resolveUpdateManifestUrl(updateManifestUrl);
-      const cacheBustedUrl = `${manifestUrl}${manifestUrl.includes("?") ? "&" : "?"}t=${Date.now()}`;
+      const cacheBustedUrl = `${APP_VERSION_MANIFEST_URL}?t=${Date.now()}`;
       const response = await fetch(cacheBustedUrl, { cache: "no-store" });
       if (!response.ok) throw new Error("Version manifest unavailable");
       const manifest = await response.json() as AppVersionManifest;
@@ -1982,18 +1950,6 @@ export default function Home() {
                   <span>APP UPDATES</span>
                   <strong>Version {APP_VERSION}</strong>
                 </div>
-                <label className="settings-text-field">
-                  <span>Source</span>
-                  <input type="text" value={updateManifestUrl} onChange={(event) => {
-                    const nextUrl = event.target.value;
-                    setUpdateManifestUrl(nextUrl);
-                    if (nextUrl.trim()) localStorage.setItem(UPDATE_MANIFEST_URL_STORAGE_KEY, nextUrl.trim());
-                    else localStorage.removeItem(UPDATE_MANIFEST_URL_STORAGE_KEY);
-                    setUpdateStatus("idle");
-                    setUpdateMessage("Ready to check for a newer Selah build.");
-                  }} placeholder="GitHub repo URL or raw app-version.json URL" aria-label="Update manifest source" />
-                </label>
-                <p className="settings-help">Paste a raw `app-version.json` link, a `github.com/owner/repo` URL, or `owner/repo`. Selah will convert GitHub repo links to the raw manifest automatically.</p>
                 <div className={`update-status ${updateStatus}`}>
                   <span>{updateStatus === "available" ? "Update available" : updateStatus === "checking" ? "Checking" : updateStatus === "current" ? "Up to date" : updateStatus === "error" ? "Check failed" : "Manual check"}</span>
                   <strong>{updateMessage}</strong>
