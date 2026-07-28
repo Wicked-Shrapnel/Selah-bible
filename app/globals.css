@@ -854,6 +854,51 @@ button.ui-close-button:hover { color: var(--sage-dark); border-color: #a9bfb1; b
 :root[data-theme="true-dark"] button.ui-close-button { border-color: #3a4246; color: #e0e4e1; background: #15191b; }
 :root[data-theme="true-dark"] button.ui-close-button:hover { color: #fbf7ef; border-color: #566069; background: #1d2428; }
 
+:root[data-theme="dark"] .floating-chapter-navigation button,
+:root[data-theme="dark"] .chapter-navigation button {
+  color: #eef6f0;
+  border-color: #44534c;
+  background: rgba(35, 49, 41, .94);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .22);
+}
+:root[data-theme="dark"] .floating-chapter-navigation button:hover,
+:root[data-theme="dark"] .chapter-navigation button:hover {
+  color: #f8f4e9;
+  border-color: #7da28f;
+  background: #2e4238;
+}
+:root[data-theme="dark"] .play-button {
+  color: #eef6f0 !important;
+  background: #2e4238 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .24);
+}
+:root[data-theme="dark"] .play-button:hover {
+  color: #f8f4e9 !important;
+  background: #3a5849 !important;
+}
+:root[data-theme="true-dark"] .floating-chapter-navigation button,
+:root[data-theme="true-dark"] .chapter-navigation button {
+  color: #eff3f7;
+  border-color: #37424d;
+  background: rgba(29, 38, 48, .94);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .34);
+}
+:root[data-theme="true-dark"] .floating-chapter-navigation button:hover,
+:root[data-theme="true-dark"] .chapter-navigation button:hover {
+  color: #fbf3df;
+  border-color: #4f6674;
+  background: #283340;
+}
+:root[data-theme="true-dark"] .play-button {
+  color: #eff3f7 !important;
+  background: #283340 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .36);
+}
+:root[data-theme="true-dark"] .play-button:hover {
+  color: #fbf3df !important;
+  background: #334252 !important;
+}
+
 .saved-read-aloud.icon-read-aloud,
 .search-results-list .search-read-aloud,
 .commentary-card-top .commentary-read-aloud,
