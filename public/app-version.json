@@ -1,18 +1,8 @@
 {
-  "latestVersion": "2.1",
-  "releasedAt": "2026-07-30",
+  "latestVersion": "2.0.7",
+  "releasedAt": "2026-07-28",
   "releaseUrl": "/",
   "releases": [
-    {
-      "version": "2.1",
-      "releasedAt": "2026-07-30",
-      "title": "Reading history and release cleanup",
-      "changes": [
-        "Reading history now keeps a continuous scroll of every chapter you visited instead of stopping after a short list.",
-        "Older reading history entries still group by Today and Yesterday, and anything older shows the actual date it was read.",
-        "The beta badge stays in the dev environment, but it is removed from the release build."
-      ]
-    },
     {
       "version": "2.0.7",
       "releasedAt": "2026-07-28",

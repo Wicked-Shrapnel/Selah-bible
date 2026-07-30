@@ -9,7 +9,7 @@ type Picker = "books" | "chapters" | null;
 type StudyTab = "commentary" | "lexicon" | "notes";
 type CommentaryView = "expository" | "jfb" | "clarke";
 type HighlightColor = "gold" | "sage" | "blue" | "rose";
-type ThemePreference = "system" | "light" | "dark" | "green-dark" | "true-dark";
+type ThemePreference = "system" | "light" | "dark" | "true-dark";
 type AudioSourcePreference = "auto" | "official" | "david";
 type LexiconEntry = { word: string; transliteration: string; pronunciation: string; spoken: string; number: string; meaning: string; lang: "he-IL" | "el-GR" };
 type OriginalWordToken = { text: string; strongs?: string[] };
@@ -49,8 +49,6 @@ type CommentarySource = {
 };
 type CommentaryChapter = { source: CommentarySource; book: string; chapter: number; entries: CommentaryEntry[] };
 type SavedPlace = { book: string; chapter: number };
-type ReadingHistoryEntry = SavedPlace & { updatedAt: number };
-type ReadingHistoryGroup = { label: string; entries: ReadingHistoryEntry[] };
 type SavedReference = { key: string; book: Book; chapter: number; verseIds: number[]; reference: string };
 type SavedTextCache = Record<string, Record<number, string>>;
 type BibleSourceVerse = { verse: string; text: string };
@@ -61,39 +59,22 @@ type UpdateStatus = "idle" | "checking" | "current" | "available" | "error";
 type ReleaseNote = { version: string; title?: string; releasedAt?: string; changes?: string[] };
 type PendingReleaseNotes = { fromVersion: string; toVersion: string; releases: ReleaseNote[] };
 type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string; releases?: ReleaseNote[]; changelog?: ReleaseNote[]; notes?: string[] };
-type HighlightMeanings = Record<HighlightColor, string>;
 
-const APP_VERSION = "2.1";
+const APP_VERSION = "2.0.7";
 const APP_VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/Wicked-Shrapnel/Selah-bible/main/public/app-version.json";
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const UPDATE_NOTES_STORAGE_KEY = "selah-pending-release-notes-v1";
 const LAST_SEEN_VERSION_STORAGE_KEY = "selah-last-seen-version-v1";
-const HIGHLIGHT_MEANINGS_STORAGE_KEY = "selah-highlight-meanings-v1";
-const READING_HISTORY_STORAGE_KEY = "selah-reading-history-v1";
-const AUDIO_DOCK_ENABLED_STORAGE_KEY = "selah-audio-dock-enabled-v1";
 const READ_ALOUD_RATE_OPTIONS = [0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3];
 const DEFAULT_READ_ALOUD_RATE = 0.9;
 const MIN_STUDY_PANEL_WIDTH = 380;
 const MAX_STUDY_PANEL_WIDTH = 680;
 const OFFICIAL_AUDIO_ENABLED = false;
-const highlightColors = ["gold", "sage", "blue", "rose"] as const satisfies readonly HighlightColor[];
 const highlightSwatchColors: Record<HighlightColor, string> = {
   gold: "#e3c15d",
   sage: "#8eb49a",
   blue: "#8eb9d3",
   rose: "#d99a95",
-};
-const highlightColorLabels: Record<HighlightColor, string> = {
-  gold: "Gold",
-  sage: "Sage",
-  blue: "Blue",
-  rose: "Rose",
-};
-const defaultHighlightMeanings: HighlightMeanings = {
-  gold: "Favorite",
-  sage: "Encouraging",
-  blue: "Study",
-  rose: "Reminds me of Jesus",
 };
 
 function clampNumber(value: number, min: number, max: number) {
@@ -144,40 +125,6 @@ function closestReadAloudRate(value: number) {
   return READ_ALOUD_RATE_OPTIONS.reduce((closest, option) => (
     Math.abs(option - value) < Math.abs(closest - value) ? option : closest
   ), DEFAULT_READ_ALOUD_RATE);
-}
-
-function normalizeHighlightMeanings(value: unknown): HighlightMeanings {
-  if (!value || typeof value !== "object") return defaultHighlightMeanings;
-  const saved = value as Partial<Record<HighlightColor, unknown>>;
-  return Object.fromEntries(highlightColors.map((color) => {
-    const meaning = typeof saved[color] === "string" ? saved[color].trim() : "";
-    return [color, meaning || defaultHighlightMeanings[color]];
-  })) as HighlightMeanings;
-}
-
-function historyGroupLabel(updatedAt: number) {
-  const entryDate = new Date(updatedAt);
-  const today = new Date();
-  const localDayDiff = Math.round((Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) - Date.UTC(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate())) / 86400000);
-  if (localDayDiff <= 0) return "Today";
-  if (localDayDiff === 1) return "Yesterday";
-  return entryDate.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function groupReadingHistory(entries: ReadingHistoryEntry[]) {
-  const grouped = new Map<string, ReadingHistoryEntry[]>();
-  for (const entry of entries) {
-    const label = historyGroupLabel(entry.updatedAt);
-    const bucket = grouped.get(label) || [];
-    bucket.push(entry);
-    grouped.set(label, bucket);
-  }
-  return [...grouped.entries()].map(([label, groupedEntries]) => ({ label, entries: groupedEntries } satisfies ReadingHistoryGroup));
 }
 
 const books: Book[] = [
@@ -594,8 +541,6 @@ export default function Home() {
   const [savedAudioChapters, setSavedAudioChapters] = useState<Set<string>>(new Set());
   const [chapterAudioFiles, setChapterAudioFiles] = useState<Record<string, string>>({});
   const [highlights, setHighlights] = useState<Record<string, HighlightColor>>({});
-  const [highlightMeanings, setHighlightMeanings] = useState<HighlightMeanings>(defaultHighlightMeanings);
-  const [highlightMeaningColor, setHighlightMeaningColor] = useState<HighlightColor>("gold");
   const [savedTextCache, setSavedTextCache] = useState<SavedTextCache>({});
   const [redLetterMap, setRedLetterMap] = useState<Record<string, string>>({});
   const [preferredHighlightColor, setPreferredHighlightColor] = useState<HighlightColor>("gold");
@@ -616,25 +561,19 @@ export default function Home() {
   const [mobileStudyOpen, setMobileStudyOpen] = useState(false);
   const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
   const [audioDockCollapsed, setAudioDockCollapsed] = useState(false);
-  const [audioDockEnabled, setAudioDockEnabled] = useState(true);
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
   const [audioSourcePreference, setAudioSourcePreference] = useState<AudioSourcePreference>("auto");
   const [studyPanelWidth, setStudyPanelWidth] = useState(MIN_STUDY_PANEL_WIDTH);
   const [isResizingStudy, setIsResizingStudy] = useState(false);
-  const [readOriginalDefinition, setReadOriginalDefinition] = useState(true);
-  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  const [readOriginalDefinition, setReadOriginalDefinition] = useState(false);
   const [commentaryData, setCommentaryData] = useState<CommentaryChapter | null>(null);
   const [commentaryStatus, setCommentaryStatus] = useState<"loading" | "ready" | "error" | "linked">("loading");
   const [commentaryReferenceTab, setCommentaryReferenceTab] = useState<CommentaryReferenceTab | null>(null);
   const [commentaryResourceOpen, setCommentaryResourceOpen] = useState(false);
   const [commentaryResourceView, setCommentaryResourceView] = useState<CommentaryView>("expository");
   const [bookmark, setBookmark] = useState<SavedPlace | null>(null);
-  const [readingHistory, setReadingHistory] = useState<ReadingHistoryEntry[]>([]);
-  const [readingHistoryPanelOpen, setReadingHistoryPanelOpen] = useState(false);
   const [savedPanelOpen, setSavedPanelOpen] = useState(false);
   const [savedViewTab, setSavedViewTab] = useState<"highlights" | "notes">("highlights");
-  const [highlightMeaningsCollapsed, setHighlightMeaningsCollapsed] = useState(false);
-  const [highlightMeaningMenuOpen, setHighlightMeaningMenuOpen] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [searchPanelOpen, setSearchPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -657,9 +596,7 @@ export default function Home() {
   const savedPanelRef = useRef<HTMLDivElement | null>(null);
   const studyPanelRef = useRef<HTMLElement | null>(null);
   const studyResizeStart = useRef({ x: 0, width: MIN_STUDY_PANEL_WIDTH });
-  const highlightMeaningMenuRef = useRef<HTMLDivElement | null>(null);
   const pendingSavedVerse = useRef<number | null>(null);
-  const readingHistoryReady = useRef(false);
   const bibleBookCache = useRef<Record<string, BibleSourceBook>>({});
   const originalLanguageBookCache = useRef<Record<string, OriginalLanguageBook>>({});
   const strongDictionaryCache = useRef<Partial<Record<"hebrew" | "greek", StrongDictionary>>>({});
@@ -771,15 +708,12 @@ export default function Home() {
       const savedNotes = localStorage.getItem("selah-notes-v2");
       const savedPlace = localStorage.getItem("selah-reading-place-v1");
       const savedHighlightColor = localStorage.getItem("selah-highlight-color") as HighlightColor | null;
-      const savedHighlightMeanings = localStorage.getItem(HIGHLIGHT_MEANINGS_STORAGE_KEY);
       const savedDockCollapsed = localStorage.getItem("selah-audio-dock-collapsed");
-      const savedDockEnabled = localStorage.getItem(AUDIO_DOCK_ENABLED_STORAGE_KEY);
       const savedTheme = localStorage.getItem("selah-theme") as ThemePreference | null;
       const savedAudioSource = localStorage.getItem("selah-audio-source") as AudioSourcePreference | null;
       const savedOriginalDefinition = localStorage.getItem("selah-read-original-definition");
       const savedStudyPanelWidth = Number(localStorage.getItem(STUDY_PANEL_WIDTH_STORAGE_KEY));
       const pendingReleaseNotes = localStorage.getItem(UPDATE_NOTES_STORAGE_KEY);
-      const savedReadingHistory = localStorage.getItem(READING_HISTORY_STORAGE_KEY);
       const searchParams = new URLSearchParams(window.location.search);
       let restoredPlace: { place: SavedPlace; book: Book } | null = null;
       if (pendingReleaseNotes) {
@@ -814,24 +748,7 @@ export default function Home() {
         const parsed = JSON.parse(savedHighlights) as string[] | Record<string, HighlightColor>;
         setHighlights(Array.isArray(parsed) ? Object.fromEntries(parsed.map((key) => [key, "gold" as HighlightColor])) : parsed);
       }
-      if (savedHighlightMeanings) {
-        try {
-          setHighlightMeanings(normalizeHighlightMeanings(JSON.parse(savedHighlightMeanings)));
-        } catch {
-          localStorage.removeItem(HIGHLIGHT_MEANINGS_STORAGE_KEY);
-        }
-      }
       if (savedNotes) setNotes(JSON.parse(savedNotes));
-      if (savedReadingHistory) {
-        try {
-          const parsed = JSON.parse(savedReadingHistory) as ReadingHistoryEntry[];
-          const normalized = parsed
-            .filter((entry) => books.some((book) => book.name === entry.book && entry.chapter >= 1 && entry.chapter <= book.chapters))
-          setReadingHistory(normalized);
-        } catch {
-          localStorage.removeItem(READING_HISTORY_STORAGE_KEY);
-        }
-      }
       if (savedPlace) {
         try {
           restoredPlace = normalizeSavedPlace(JSON.parse(savedPlace));
@@ -843,41 +760,25 @@ export default function Home() {
       }
       if (savedHighlightColor && ["gold", "sage", "blue", "rose"].includes(savedHighlightColor)) setPreferredHighlightColor(savedHighlightColor);
       if (savedDockCollapsed === "true") setAudioDockCollapsed(true);
-      if (savedDockEnabled === "false") setAudioDockEnabled(false);
-      if (savedTheme && ["system", "light", "dark", "green-dark", "true-dark"].includes(savedTheme)) setThemePreference(savedTheme);
+      if (savedTheme && ["system", "light", "dark", "true-dark"].includes(savedTheme)) setThemePreference(savedTheme);
       if (savedAudioSource && ["auto", "official", "david"].includes(savedAudioSource)) {
         setAudioSourcePreference(savedAudioSource === "official" && !OFFICIAL_AUDIO_ENABLED ? "david" : savedAudioSource);
       }
       if (savedOriginalDefinition === "true") setReadOriginalDefinition(true);
-      if (savedOriginalDefinition === "false") setReadOriginalDefinition(false);
       if (Number.isFinite(savedStudyPanelWidth)) setStudyPanelWidth(clampNumber(savedStudyPanelWidth, MIN_STUDY_PANEL_WIDTH, MAX_STUDY_PANEL_WIDTH));
       const linkedPassage = passageFromSearchParams(searchParams);
       if (linkedPassage) {
         pendingSavedVerse.current = linkedPassage.verse;
         setSelectedBook(linkedPassage.book);
         setChapter(linkedPassage.chapter);
-        readingHistoryReady.current = true;
-        setPreferencesLoaded(true);
         return;
       }
       if (restoredPlace) {
         setSelectedBook(restoredPlace.book);
         setChapter(restoredPlace.place.chapter);
       }
-      readingHistoryReady.current = true;
-      setPreferencesLoaded(true);
     });
   }, []);
-
-  useEffect(() => {
-    if (!readingHistoryReady.current) return;
-    const entry = { book: selectedBook.name, chapter, updatedAt: Date.now() };
-    setReadingHistory((current) => {
-      const next = [entry, ...current];
-      localStorage.setItem(READING_HISTORY_STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
-  }, [selectedBook.name, chapter]);
 
   const loadBibleBook = useCallback(async (bookName: string) => {
     const fileName = bibleFileName(bookName);
@@ -892,7 +793,6 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!preferencesLoaded) return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const applyTheme = () => {
       const resolvedTheme = themePreference === "system" ? (media.matches ? "dark" : "light") : themePreference;
@@ -901,12 +801,7 @@ export default function Home() {
     applyTheme();
     if (themePreference === "system") media.addEventListener("change", applyTheme);
     return () => media.removeEventListener("change", applyTheme);
-  }, [preferencesLoaded, themePreference]);
-
-  useEffect(() => {
-    if (!preferencesLoaded) return;
-    document.documentElement.dataset.audioDockEnabled = audioDockEnabled ? "true" : "false";
-  }, [audioDockEnabled, preferencesLoaded]);
+  }, [themePreference]);
 
   useEffect(() => {
     if (!isResizingStudy) return;
@@ -940,11 +835,10 @@ export default function Home() {
       const target = event.target as Node;
       if (picker === "chapters" && !passagePickerRef.current?.contains(target)) setPicker(null);
       if (searchExpanded && !passagePickerRef.current?.contains(target)) setSearchExpanded(false);
-      if (highlightMeaningMenuOpen && !highlightMeaningMenuRef.current?.contains(target)) setHighlightMeaningMenuOpen(false);
     };
     document.addEventListener("pointerdown", closeMenusOnOutsideClick);
     return () => document.removeEventListener("pointerdown", closeMenusOnOutsideClick);
-  }, [picker, searchExpanded, highlightMeaningMenuOpen]);
+  }, [picker, searchExpanded]);
 
   const snapshotSavedLibrary = () => {
     const keys = [
@@ -952,7 +846,6 @@ export default function Home() {
       "selah-notes-v2",
       "selah-reading-place-v1",
       "selah-highlight-color",
-      HIGHLIGHT_MEANINGS_STORAGE_KEY,
       "selah-audio-dock-collapsed",
       "selah-theme",
       "selah-audio-source",
@@ -1415,17 +1308,6 @@ export default function Home() {
     setSelectedForHighlight([]);
   };
 
-  const updateHighlightMeaning = (color: HighlightColor, meaning: string) => {
-    const next = { ...highlightMeanings, [color]: meaning };
-    setHighlightMeanings(next);
-    localStorage.setItem(HIGHLIGHT_MEANINGS_STORAGE_KEY, JSON.stringify(next));
-  };
-
-  const resetHighlightMeanings = () => {
-    setHighlightMeanings(defaultHighlightMeanings);
-    localStorage.setItem(HIGHLIGHT_MEANINGS_STORAGE_KEY, JSON.stringify(defaultHighlightMeanings));
-  };
-
   const toggleHighlight = (id: number) => {
     const key = verseKey(id);
     const next = { ...highlights };
@@ -1605,21 +1487,6 @@ export default function Home() {
     setPicker("chapters");
   };
 
-  const openReadingHistory = (entry: ReadingHistoryEntry) => {
-    const book = books.find((item) => item.name === entry.book);
-    if (!book) return;
-    setSelectedBook(book);
-    setChapter(entry.chapter);
-    setBookFilter("");
-    setReadingHistoryPanelOpen(false);
-    setPicker(null);
-  };
-
-  const clearReadingHistory = () => {
-    setReadingHistory([]);
-    localStorage.removeItem(READING_HISTORY_STORAGE_KEY);
-  };
-
   const toggleReadingPlace = () => {
     if (isCurrentPlaceBookmarked) {
       localStorage.removeItem("selah-reading-place-v1");
@@ -1719,7 +1586,6 @@ export default function Home() {
     .map(([key, color]) => ({ saved: parseSavedReference(key), color }))
     .filter((item): item is { saved: SavedReference; color: HighlightColor } => Boolean(item.saved))
     .reverse();
-  const groupedReadingHistory = useMemo(() => groupReadingHistory(readingHistory), [readingHistory]);
   const savedCount = Object.values(notes).filter(Boolean).length + Object.keys(highlights).length + (bookmark ? 1 : 0);
   const savedReferencesToLoad = useMemo(
     () => [...recentHighlights.map((item) => item.saved), ...recentNotes.map((item) => item.saved)],
@@ -2185,16 +2051,6 @@ export default function Home() {
                   <option value="david">Microsoft David</option>
                 </select>
               </label>
-              <label className="settings-toggle">
-                <span>Read aloud dock</span>
-                <input type="checkbox" checked={audioDockEnabled} onChange={(event) => {
-                  const enabled = event.target.checked;
-                  setAudioDockEnabled(enabled);
-                  localStorage.setItem(AUDIO_DOCK_ENABLED_STORAGE_KEY, String(enabled));
-                }} />
-                <i aria-hidden="true" />
-              </label>
-              <p className="settings-help">Show the small read aloud control dock at the bottom of the page.</p>
               <div className="audio-source-summary">
                 <span>Primary</span>
                 <strong>{shouldUseChapterMp3Audio ? "Official audio Bible" : audioSourcePreference === "david" ? "Microsoft David selected" : "Official audio Bible is disabled right now"}</strong>
@@ -2212,92 +2068,19 @@ export default function Home() {
                   min={READ_ALOUD_RATE_OPTIONS[0]}
                   max={READ_ALOUD_RATE_OPTIONS[READ_ALOUD_RATE_OPTIONS.length - 1]}
                   step="0.1"
+                  list="read-aloud-speed-ticks"
                   value={rate}
                   onChange={(event) => setRate(closestReadAloudRate(Number(event.target.value)))}
                 />
+                <datalist id="read-aloud-speed-ticks">
+                  {READ_ALOUD_RATE_OPTIONS.map((speed) => <option key={speed} value={speed} />)}
+                </datalist>
                 <div className="speed-ticks" aria-hidden="true">
                   {READ_ALOUD_RATE_OPTIONS.map((speed) => <i key={speed} className={speed === rate ? "active" : ""} />)}
                 </div>
                 <strong>{rate.toFixed(2)}x</strong>
                 <button type="button" onClick={() => setRate(DEFAULT_READ_ALOUD_RATE)}>Default</button>
               </label>
-              <div className="settings-card settings-card-muted settings-card-inline-block">
-                <div className="settings-card-heading settings-card-heading-with-tip">
-                  <button
-                    type="button"
-                    className="settings-card-heading-toggle"
-                    onClick={() => setHighlightMeaningsCollapsed((collapsed) => !collapsed)}
-                    aria-expanded={!highlightMeaningsCollapsed}
-                    aria-controls="highlight-meanings-body"
-                  >
-                    <i aria-hidden="true">{highlightMeaningsCollapsed ? "+" : "-"}</i>
-                    <span>ORGANIZATION</span>
-                    <strong>Highlight meanings</strong>
-                  </button>
-                  <div className="settings-card-tip-wrap">
-                    <button
-                      type="button"
-                      className="settings-card-tip"
-                      aria-describedby="highlight-meaning-help"
-                      aria-label="Why highlight meanings matter"
-                    >
-                      i
-                    </button>
-                    <div className="settings-card-tip-bubble" id="highlight-meaning-help" role="tooltip">
-                      If you're anything like me you use different colors to represent different things but then you forget what each of them are supposed to represent. Use this section to give each color a tag to help you keep organized.
-                    </div>
-                  </div>
-                </div>
-                {!highlightMeaningsCollapsed && (
-                  <div id="highlight-meanings-body">
-                    <div className="highlight-meaning-inline">
-                      <div className="highlight-meaning-picker" ref={highlightMeaningMenuRef}>
-                        <span>Color</span>
-                        <button
-                          type="button"
-                          className="highlight-meaning-trigger"
-                          onClick={() => setHighlightMeaningMenuOpen((value) => !value)}
-                          aria-haspopup="menu"
-                          aria-expanded={highlightMeaningMenuOpen}
-                          aria-label={`Choose highlight color, currently ${highlightColorLabels[highlightMeaningColor]}`}
-                        >
-                          <span className="highlight-meaning-swatch" style={{ backgroundColor: highlightSwatchColors[highlightMeaningColor] }} aria-hidden="true" />
-                        </button>
-                        {highlightMeaningMenuOpen && (
-                          <div className="highlight-meaning-menu" role="menu" aria-label="Highlight colors">
-                            {highlightColors.map((color) => (
-                              <button
-                                key={color}
-                                type="button"
-                                className={`highlight-meaning-option ${highlightMeaningColor === color ? "selected" : ""}`}
-                                onClick={() => { setHighlightMeaningColor(color); setHighlightMeaningMenuOpen(false); }}
-                                role="menuitemradio"
-                                aria-checked={highlightMeaningColor === color}
-                                aria-label={highlightColorLabels[color]}
-                              >
-                                <span className="highlight-meaning-swatch" style={{ backgroundColor: highlightSwatchColors[color] }} aria-hidden="true" />
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <label className="highlight-meaning-tag">
-                        <span>Tag</span>
-                        <textarea
-                          value={highlightMeanings[highlightMeaningColor]}
-                          onChange={(event) => updateHighlightMeaning(highlightMeaningColor, event.target.value)}
-                          aria-label={`${highlightColorLabels[highlightMeaningColor]} highlight meaning`}
-                          placeholder={`Tag this color — ${defaultHighlightMeanings[highlightMeaningColor]}`}
-                          rows={8}
-                        />
-                      </label>
-                    </div>
-                    <div className="highlight-meaning-actions">
-                      <button type="button" onClick={resetHighlightMeanings}>Reset defaults</button>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
             <div className="settings-side-stack">
               <div className="settings-card">
@@ -2314,8 +2097,7 @@ export default function Home() {
                   }}>
                     <option value="system">Follow device</option>
                     <option value="light">Light</option>
-                    <option value="dark">Dark</option>
-                    <option value="green-dark">Green dark</option>
+                    <option value="dark">Green dark</option>
                     <option value="true-dark">True dark</option>
                   </select>
                 </label>
@@ -2336,7 +2118,7 @@ export default function Home() {
                 </label>
                 <p className="settings-help">When enabled, Selah reads the English definition immediately after pronouncing the Hebrew or Greek word.</p>
               </div>
-              <div className="settings-card app-updates-card">
+              <div className="settings-card">
                 <div className="settings-card-heading settings-card-heading-action">
                   <div>
                     <span>APP UPDATES</span>
@@ -2391,7 +2173,7 @@ export default function Home() {
                       <div className="saved-list-item" key={saved.key}>
                         <button className="saved-jump" onClick={() => openSavedReference(saved)}>
                           <i className={`saved-color ${color}`} aria-hidden="true" />
-                          <span><strong>{saved.reference}</strong><em>{highlightMeanings[color]}</em><small>{text ? excerptText(text) : "Loading verse text..."}</small></span>
+                          <span><strong>{saved.reference}</strong><small>{text ? excerptText(text) : "Loading verse text..."}</small></span>
                           <b>Jump</b>
                         </button>
                         <button className="saved-read-aloud icon-read-aloud" onClick={() => readSavedReference(saved)} disabled={!text} aria-label={isSavedReading && !isPaused ? `Pause reading ${saved.reference}` : isSavedReading && isPaused ? `Resume reading ${saved.reference}` : `Read ${saved.reference} aloud`} title={isSavedReading && !isPaused ? "Pause read aloud" : isSavedReading && isPaused ? "Resume read aloud" : "Read aloud"}>
@@ -2612,16 +2394,6 @@ export default function Home() {
                   <b aria-hidden="true">⌕</b>
                   <input autoFocus value={bookFilter} onChange={(event) => setBookFilter(event.target.value)} placeholder="Search for a book…" />
                 </label>
-                <section className="reading-history" aria-label="Recently read passages">
-                  <button
-                    type="button"
-                    className="reading-history-trigger"
-                    onClick={() => setReadingHistoryPanelOpen(true)}
-                    aria-haspopup="dialog"
-                  >
-                    History
-                  </button>
-                </section>
                 <div className="testament-columns">
                   {[{ title: "Old Testament", items: filteredOldTestament }, { title: "New Testament", items: filteredNewTestament }].map((group) => (
                     <div key={group.title} className="testament-group">
@@ -2635,42 +2407,6 @@ export default function Home() {
                 </div>
           </section>
         </>
-      )}
-
-      {readingHistoryPanelOpen && (
-        <section className="reading-history-window" aria-modal="true" role="dialog" aria-label="Reading history">
-          <div className="reading-history-window-heading">
-            <div><span>READING HISTORY</span><strong>Reading History</strong></div>
-            <button className="ui-close-button" onClick={() => setReadingHistoryPanelOpen(false)} aria-label="Close reading history">×</button>
-          </div>
-          <div className="reading-history-window-body">
-            <div className="reading-history-window-actions">
-              <span>{readingHistory.length ? `${readingHistory.length} recent ${readingHistory.length === 1 ? "chapter" : "chapters"}` : "No chapters yet"}</span>
-              {readingHistory.length > 0 && <button type="button" onClick={clearReadingHistory}>Clear</button>}
-            </div>
-            {readingHistory.length > 0 ? (
-              <div className="reading-history-group-list">
-                {groupedReadingHistory.map((group) => (
-                  <section className="reading-history-group" key={group.label}>
-                    <div className="reading-history-group-label">{group.label}</div>
-                    <div className="reading-history-chapter-list">
-                      {group.entries.map((entry) => (
-                        <button
-                          key={`${group.label}-${entry.book}-${entry.chapter}-${entry.updatedAt}`}
-                          type="button"
-                          onClick={() => openReadingHistory(entry)}
-                          className={entry.book === selectedBook.name && entry.chapter === chapter ? "active" : ""}
-                        >
-                          <strong>{entry.book} {entry.chapter}</strong>
-                        </button>
-                      ))}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            ) : <p>No reading history yet.</p>}
-          </div>
-        </section>
       )}
 
       <div className={`workspace ${studyCollapsed ? "study-collapsed" : ""} ${isResizingStudy ? "resizing-study" : ""}`}>
@@ -2779,7 +2515,7 @@ export default function Home() {
                           <span>Highlight color</span>
                           <div className="verse-color-row">
                             {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => (
-                              <button key={color} className={`color-swatch ${color} ${highlightColor === color ? "selected" : ""}`} style={{ "--swatch-color": highlightSwatchColors[color] } as CSSProperties} onClick={() => setVerseHighlight(verse.id, color)} aria-label={`Highlight as ${highlightMeanings[color]}`} title={highlightMeanings[color]}>
+                              <button key={color} className={`color-swatch ${color} ${highlightColor === color ? "selected" : ""}`} style={{ "--swatch-color": highlightSwatchColors[color] } as CSSProperties} onClick={() => setVerseHighlight(verse.id, color)} aria-label={`Highlight ${color}`} title={preferredHighlightColor === color ? "Preferred highlight color" : undefined}>
                                 <span className="swatch-chip" style={{ backgroundColor: highlightSwatchColors[color] }} />
                               </button>
                             ))}
@@ -2829,7 +2565,7 @@ export default function Home() {
               <strong>{selectedForHighlight.length} {selectedForHighlight.length === 1 ? "verse" : "verses"} selected</strong>
               <span>Highlight:</span>
               {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => (
-                <button key={color} className={`color-swatch ${color} ${preferredHighlightColor === color ? "preferred" : ""}`} style={{ "--swatch-color": highlightSwatchColors[color] } as CSSProperties} onClick={() => applyHighlight(color)} aria-label={`Highlight as ${highlightMeanings[color]}`} title={highlightMeanings[color]}>
+                <button key={color} className={`color-swatch ${color} ${preferredHighlightColor === color ? "preferred" : ""}`} style={{ "--swatch-color": highlightSwatchColors[color] } as CSSProperties} onClick={() => applyHighlight(color)} aria-label={`Highlight ${color}`}>
                   <span className="swatch-chip" style={{ backgroundColor: highlightSwatchColors[color] }} />
                 </button>
               ))}
@@ -3070,17 +2806,15 @@ export default function Home() {
         <button onClick={() => goToAdjacentChapter(1)} disabled={!hasNextChapter} aria-label="Next chapter" title="Next chapter">›</button>
       </nav>
 
-      {audioDockEnabled && (
-        <section className={`audio-dock ${audioDockCollapsed ? "collapsed" : ""}`} aria-label="Read aloud controls">
-          {!audioDockCollapsed && <div className="now-reading"><span className="audio-pulse">◖</span><div><small>{isPaused ? "PAUSED" : isReading ? "READING" : "READ ALOUD"}</small><strong title={activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}>{activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}</strong></div></div>}
-          <div className="transport">
-            <button className="skip-button" aria-label="Previous verse" onClick={() => jumpToVerse(Math.max(verses[0]?.id || 1, (activeVerse || selectedVerse) - 1))}>‹<span>|</span></button>
-            {!isReading ? <button className="play-button" onClick={() => startReading()} aria-label="Start read aloud">▶</button> : <button className="play-button" onClick={togglePause} aria-label={isPaused ? "Resume read aloud" : "Pause read aloud"}>{isPaused ? "▶" : "Ⅱ"}</button>}
-            <button className="skip-button" aria-label="Next verse" onClick={() => jumpToVerse(Math.min(verses.at(-1)?.id || 1, (activeVerse || selectedVerse) + 1))}><span>|</span>›</button>
-          </div>
-          <button className="audio-collapse-button" onClick={() => { const next = !audioDockCollapsed; setAudioDockCollapsed(next); localStorage.setItem("selah-audio-dock-collapsed", String(next)); setAudioSettingsOpen(false); }} aria-label={audioDockCollapsed ? "Expand read aloud controls" : "Collapse read aloud controls"}>{audioDockCollapsed ? "+" : "−"}</button>
-        </section>
-      )}
+      <section className={`audio-dock ${audioDockCollapsed ? "collapsed" : ""}`} aria-label="Read aloud controls">
+        {!audioDockCollapsed && <div className="now-reading"><span className="audio-pulse">◖</span><div><small>{isPaused ? "PAUSED" : isReading ? "READING" : "READ ALOUD"}</small><strong title={activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}>{activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}</strong></div></div>}
+        <div className="transport">
+          <button className="skip-button" aria-label="Previous verse" onClick={() => jumpToVerse(Math.max(verses[0]?.id || 1, (activeVerse || selectedVerse) - 1))}>‹<span>|</span></button>
+          {!isReading ? <button className="play-button" onClick={() => startReading()} aria-label="Start read aloud">▶</button> : <button className="play-button" onClick={togglePause} aria-label={isPaused ? "Resume read aloud" : "Pause read aloud"}>{isPaused ? "▶" : "Ⅱ"}</button>}
+          <button className="skip-button" aria-label="Next verse" onClick={() => jumpToVerse(Math.min(verses.at(-1)?.id || 1, (activeVerse || selectedVerse) + 1))}><span>|</span>›</button>
+        </div>
+        <button className="audio-collapse-button" onClick={() => { const next = !audioDockCollapsed; setAudioDockCollapsed(next); localStorage.setItem("selah-audio-dock-collapsed", String(next)); setAudioSettingsOpen(false); }} aria-label={audioDockCollapsed ? "Expand read aloud controls" : "Collapse read aloud controls"}>{audioDockCollapsed ? "+" : "−"}</button>
+      </section>
     </main>
   );
 }
