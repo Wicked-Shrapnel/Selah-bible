@@ -1,8 +1,18 @@
 {
-  "latestVersion": "2.0.9",
-  "releasedAt": "2026-07-30",
+  "latestVersion": "2.0.10",
+  "releasedAt": "2026-07-31",
   "releaseUrl": "/",
   "releases": [
+    {
+      "version": "2.0.10",
+      "releasedAt": "2026-07-31",
+      "title": "Update check verification",
+      "changes": [
+        "Bumped the live manifest so the update checker has a newer build to detect.",
+        "This lets you verify that the check-for-update button still works against GitHub.",
+        "The tab and theme cleanup from the previous checkpoint remains in place."
+      ]
+    },
     {
       "version": "2.0.9",
       "releasedAt": "2026-07-30",
