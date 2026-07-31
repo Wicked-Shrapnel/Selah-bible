@@ -1,8 +1,18 @@
 {
-  "latestVersion": "2.0.11",
+  "latestVersion": "2.0.12",
   "releasedAt": "2026-07-31",
   "releaseUrl": "/",
   "releases": [
+    {
+      "version": "2.0.12",
+      "releasedAt": "2026-07-31",
+      "title": "Updater panel cleanup",
+      "changes": [
+        "Removed the extra divider lines in the updater panel version section.",
+        "Kept the manual update flow in place so you can verify the update button safely.",
+        "This gives the local test build a new GitHub version to detect."
+      ]
+    },
     {
       "version": "2.0.11",
       "releasedAt": "2026-07-31",

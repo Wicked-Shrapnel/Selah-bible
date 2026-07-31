@@ -61,7 +61,7 @@ type PendingReleaseNotes = { fromVersion: string; toVersion: string; releases: R
 type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string; releases?: ReleaseNote[]; changelog?: ReleaseNote[]; notes?: string[] };
 type HighlightMeaningMap = Record<HighlightColor, string>;
 
-const APP_VERSION = "2.0.11";
+const APP_VERSION = "2.0.12";
 const APP_VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/Wicked-Shrapnel/Selah-bible/main/public/app-version.json";
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const UPDATE_NOTES_STORAGE_KEY = "selah-pending-release-notes-v1";
@@ -924,8 +924,9 @@ export default function Home() {
 
   const applyAppUpdate = (releaseUrl = updateReleaseUrl) => {
     snapshotSavedLibrary();
-    const target = releaseUrl || window.location.href;
-    window.location.replace(target.includes("?") ? `${target}&updated=${Date.now()}` : `${target}?updated=${Date.now()}`);
+    const target = typeof releaseUrl === "string" && releaseUrl.trim() ? releaseUrl : updateReleaseUrl || window.location.href;
+    const nextUrl = target.includes("?") ? `${target}&updated=${Date.now()}` : `${target}?updated=${Date.now()}`;
+    window.location.replace(nextUrl);
   };
 
   useEffect(() => {
@@ -2246,7 +2247,7 @@ export default function Home() {
                 </label>
                 <p className="settings-help">When enabled, Selah reads the English definition immediately after pronouncing the Hebrew or Greek word.</p>
               </div>
-              <div className="settings-card">
+              <div className="settings-card settings-card-version">
                 <div className="settings-card-heading settings-card-heading-action">
                   <div>
                     <span>APP UPDATES</span>
@@ -2256,7 +2257,7 @@ export default function Home() {
                 </div>
                 <div className="settings-action-row">
                   <button onClick={checkForAppUpdate} disabled={updateStatus === "checking"}>{updateStatus === "checking" ? "Checking..." : "Check for update"}</button>
-                  {updateStatus === "available" && <button className="primary" onClick={applyAppUpdate}>Update now</button>}
+                  {updateStatus === "available" && <button className="primary" onClick={() => applyAppUpdate()}>Update now</button>}
                   <span className={`update-inline-message ${updateStatus}`}>{updateMessage}</span>
                 </div>
               </div>
