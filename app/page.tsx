@@ -759,6 +759,10 @@ export default function Home() {
         const updateRefreshVersion = searchParams.has("updated") ? backupVersion || lastSeenVersion || "" : "";
         if (updateRefreshVersion && compareVersions(APP_VERSION, updateRefreshVersion) > 0) {
           void showReleaseNotesFromManifest(updateRefreshVersion);
+          searchParams.delete("updated");
+          const nextQuery = searchParams.toString();
+          const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}${window.location.hash}`;
+          window.history.replaceState({}, "", nextUrl);
         } else if (!lastSeenVersion || compareVersions(APP_VERSION, lastSeenVersion) > 0) {
           localStorage.setItem(LAST_SEEN_VERSION_STORAGE_KEY, APP_VERSION);
         }
