@@ -1,8 +1,18 @@
 {
-  "latestVersion": "2.0.7",
-  "releasedAt": "2026-07-28",
+  "latestVersion": "2.0.9",
+  "releasedAt": "2026-07-30",
   "releaseUrl": "/",
   "releases": [
+    {
+      "version": "2.0.9",
+      "releasedAt": "2026-07-30",
+      "title": "Theme and toggle polish",
+      "changes": [
+        "Regular dark mode now uses a cleaner neutral palette instead of borrowing the green-dark look.",
+        "The pronunciation toggle has a clearer switch treatment across themes.",
+        "The version indicator now shows 2.0.9 so you can visually confirm the latest checkpoint."
+      ]
+    },
     {
       "version": "2.0.7",
       "releasedAt": "2026-07-28",

@@ -9,7 +9,7 @@ type Picker = "books" | "chapters" | null;
 type StudyTab = "commentary" | "lexicon" | "notes";
 type CommentaryView = "expository" | "jfb" | "clarke";
 type HighlightColor = "gold" | "sage" | "blue" | "rose";
-type ThemePreference = "system" | "light" | "dark" | "true-dark";
+type ThemePreference = "system" | "light" | "dark" | "green-dark" | "true-dark";
 type AudioSourcePreference = "auto" | "official" | "david";
 type LexiconEntry = { word: string; transliteration: string; pronunciation: string; spoken: string; number: string; meaning: string; lang: "he-IL" | "el-GR" };
 type OriginalWordToken = { text: string; strongs?: string[] };
@@ -60,7 +60,7 @@ type ReleaseNote = { version: string; title?: string; releasedAt?: string; chang
 type PendingReleaseNotes = { fromVersion: string; toVersion: string; releases: ReleaseNote[] };
 type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string; releases?: ReleaseNote[]; changelog?: ReleaseNote[]; notes?: string[] };
 
-const APP_VERSION = "2.0.7";
+const APP_VERSION = "2.0.9";
 const APP_VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/Wicked-Shrapnel/Selah-bible/main/public/app-version.json";
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const UPDATE_NOTES_STORAGE_KEY = "selah-pending-release-notes-v1";
@@ -760,7 +760,7 @@ export default function Home() {
       }
       if (savedHighlightColor && ["gold", "sage", "blue", "rose"].includes(savedHighlightColor)) setPreferredHighlightColor(savedHighlightColor);
       if (savedDockCollapsed === "true") setAudioDockCollapsed(true);
-      if (savedTheme && ["system", "light", "dark", "true-dark"].includes(savedTheme)) setThemePreference(savedTheme);
+      if (savedTheme && ["system", "light", "dark", "green-dark", "true-dark"].includes(savedTheme)) setThemePreference(savedTheme);
       if (savedAudioSource && ["auto", "official", "david"].includes(savedAudioSource)) {
         setAudioSourcePreference(savedAudioSource === "official" && !OFFICIAL_AUDIO_ENABLED ? "david" : savedAudioSource);
       }
@@ -2090,17 +2090,18 @@ export default function Home() {
                 </div>
                 <label>
                   <span>Theme</span>
-                  <select value={themePreference} onChange={(event) => {
-                    const nextTheme = event.target.value as ThemePreference;
-                    setThemePreference(nextTheme);
-                    localStorage.setItem("selah-theme", nextTheme);
-                  }}>
-                    <option value="system">Follow device</option>
-                    <option value="light">Light</option>
-                    <option value="dark">Green dark</option>
-                    <option value="true-dark">True dark</option>
-                  </select>
-                </label>
+                    <select value={themePreference} onChange={(event) => {
+                      const nextTheme = event.target.value as ThemePreference;
+                      setThemePreference(nextTheme);
+                      localStorage.setItem("selah-theme", nextTheme);
+                    }}>
+                      <option value="system">Follow device</option>
+                      <option value="light">Light</option>
+                      <option value="dark">Dark</option>
+                      <option value="green-dark">Green dark</option>
+                      <option value="true-dark">True dark</option>
+                    </select>
+                  </label>
               </div>
               <div className="settings-card">
                 <div className="settings-card-heading">
