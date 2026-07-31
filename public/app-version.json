@@ -1,8 +1,18 @@
 {
-  "latestVersion": "2.0.10",
+  "latestVersion": "2.0.11",
   "releasedAt": "2026-07-31",
   "releaseUrl": "/",
   "releases": [
+    {
+      "version": "2.0.11",
+      "releasedAt": "2026-07-31",
+      "title": "Updater button restored",
+      "changes": [
+        "Restored the manual Update now button after checking for a newer build.",
+        "The check-for-update flow still waits for your confirmation instead of refreshing automatically.",
+        "This gives you a clean GitHub target to test against."
+      ]
+    },
     {
       "version": "2.0.10",
       "releasedAt": "2026-07-31",

@@ -59,8 +59,9 @@ type UpdateStatus = "idle" | "checking" | "current" | "available" | "error";
 type ReleaseNote = { version: string; title?: string; releasedAt?: string; changes?: string[] };
 type PendingReleaseNotes = { fromVersion: string; toVersion: string; releases: ReleaseNote[] };
 type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string; releases?: ReleaseNote[]; changelog?: ReleaseNote[]; notes?: string[] };
+type HighlightMeaningMap = Record<HighlightColor, string>;
 
-const APP_VERSION = "2.0.10";
+const APP_VERSION = "2.0.11";
 const APP_VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/Wicked-Shrapnel/Selah-bible/main/public/app-version.json";
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const UPDATE_NOTES_STORAGE_KEY = "selah-pending-release-notes-v1";
@@ -76,6 +77,17 @@ const highlightSwatchColors: Record<HighlightColor, string> = {
   blue: "#8eb9d3",
   rose: "#d99a95",
 };
+const highlightColorNames: Record<HighlightColor, string> = {
+  gold: "Gold",
+  sage: "Sage",
+  blue: "Blue",
+  rose: "Rose",
+};
+
+function highlightMeaningLabel(color: HighlightColor, meanings: HighlightMeaningMap) {
+  const meaning = meanings[color]?.trim();
+  return meaning ? `${highlightColorNames[color]} — ${meaning}` : highlightColorNames[color];
+}
 
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -544,6 +556,9 @@ export default function Home() {
   const [savedTextCache, setSavedTextCache] = useState<SavedTextCache>({});
   const [redLetterMap, setRedLetterMap] = useState<Record<string, string>>({});
   const [preferredHighlightColor, setPreferredHighlightColor] = useState<HighlightColor>("gold");
+  const [highlightMeanings, setHighlightMeanings] = useState<HighlightMeaningMap>({ gold: "", sage: "", blue: "", rose: "" });
+  const [highlightMeaningColor, setHighlightMeaningColor] = useState<HighlightColor>("gold");
+  const [highlightMeaningSectionOpen, setHighlightMeaningSectionOpen] = useState(true);
   const [selectedForHighlight, setSelectedForHighlight] = useState<number[]>([]);
   const [selectedWord, setSelectedWord] = useState("");
   const [selectedWordKey, setSelectedWordKey] = useState("");
@@ -560,6 +575,7 @@ export default function Home() {
   const [studyCollapsed, setStudyCollapsed] = useState(false);
   const [mobileStudyOpen, setMobileStudyOpen] = useState(false);
   const [audioSettingsOpen, setAudioSettingsOpen] = useState(false);
+  const [audioDockEnabled, setAudioDockEnabled] = useState(true);
   const [audioDockCollapsed, setAudioDockCollapsed] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
   const [audioSourcePreference, setAudioSourcePreference] = useState<AudioSourcePreference>("auto");
@@ -708,7 +724,10 @@ export default function Home() {
       const savedNotes = localStorage.getItem("selah-notes-v2");
       const savedPlace = localStorage.getItem("selah-reading-place-v1");
       const savedHighlightColor = localStorage.getItem("selah-highlight-color") as HighlightColor | null;
+      const savedHighlightMeanings = localStorage.getItem("selah-highlight-meanings-v1");
+      const savedHighlightMeaningSectionOpen = localStorage.getItem("selah-highlight-meaning-section-open");
       const savedDockCollapsed = localStorage.getItem("selah-audio-dock-collapsed");
+      const savedAudioDockEnabled = localStorage.getItem("selah-audio-dock-enabled");
       const savedTheme = localStorage.getItem("selah-theme") as ThemePreference | null;
       const savedAudioSource = localStorage.getItem("selah-audio-source") as AudioSourcePreference | null;
       const savedOriginalDefinition = localStorage.getItem("selah-read-original-definition");
@@ -759,12 +778,27 @@ export default function Home() {
         }
       }
       if (savedHighlightColor && ["gold", "sage", "blue", "rose"].includes(savedHighlightColor)) setPreferredHighlightColor(savedHighlightColor);
+      if (savedHighlightMeanings) {
+        try {
+          const parsed = JSON.parse(savedHighlightMeanings) as Partial<HighlightMeaningMap>;
+          setHighlightMeanings({
+            gold: typeof parsed.gold === "string" ? parsed.gold : "",
+            sage: typeof parsed.sage === "string" ? parsed.sage : "",
+            blue: typeof parsed.blue === "string" ? parsed.blue : "",
+            rose: typeof parsed.rose === "string" ? parsed.rose : "",
+          });
+        } catch {
+          localStorage.removeItem("selah-highlight-meanings-v1");
+        }
+      }
+      if (savedHighlightMeaningSectionOpen === "false") setHighlightMeaningSectionOpen(false);
       if (savedDockCollapsed === "true") setAudioDockCollapsed(true);
       if (savedTheme && ["system", "light", "dark", "green-dark", "true-dark"].includes(savedTheme)) setThemePreference(savedTheme);
       if (savedAudioSource && ["auto", "official", "david"].includes(savedAudioSource)) {
         setAudioSourcePreference(savedAudioSource === "official" && !OFFICIAL_AUDIO_ENABLED ? "david" : savedAudioSource);
       }
       if (savedOriginalDefinition === "true") setReadOriginalDefinition(true);
+      if (savedAudioDockEnabled === "false") setAudioDockEnabled(false);
       if (Number.isFinite(savedStudyPanelWidth)) setStudyPanelWidth(clampNumber(savedStudyPanelWidth, MIN_STUDY_PANEL_WIDTH, MAX_STUDY_PANEL_WIDTH));
       const linkedPassage = passageFromSearchParams(searchParams);
       if (linkedPassage) {
@@ -846,7 +880,9 @@ export default function Home() {
       "selah-notes-v2",
       "selah-reading-place-v1",
       "selah-highlight-color",
+      "selah-highlight-meanings-v1",
       "selah-audio-dock-collapsed",
+      "selah-audio-dock-enabled",
       "selah-theme",
       "selah-audio-source",
       "selah-read-original-definition",
@@ -875,8 +911,7 @@ export default function Home() {
         const releases = releaseNotesForUpdate(manifest, APP_VERSION, nextVersion);
         localStorage.setItem(UPDATE_NOTES_STORAGE_KEY, JSON.stringify({ fromVersion: APP_VERSION, toVersion: nextVersion, releases } satisfies PendingReleaseNotes));
         setUpdateStatus("available");
-        setUpdateMessage(`Version ${nextVersion} is available. Refreshing Selah now...`);
-        window.setTimeout(() => applyAppUpdate(manifest.releaseUrl || ""), 900);
+        setUpdateMessage(`Version ${nextVersion} is available. Refresh is disabled for now.`);
       } else {
         setUpdateStatus("current");
         setUpdateMessage("Selah is up to date.");
@@ -1335,6 +1370,21 @@ export default function Home() {
       localStorage.setItem("selah-highlight-color", color);
     }
     setOpenVerseMenu(null);
+  };
+
+  const updateHighlightMeaning = (color: HighlightColor, meaning: string) => {
+    const next = {
+      ...highlightMeanings,
+      [color]: meaning,
+    };
+    setHighlightMeanings(next);
+    localStorage.setItem("selah-highlight-meanings-v1", JSON.stringify(next));
+  };
+
+  const resetHighlightMeanings = () => {
+    const cleared: HighlightMeaningMap = { gold: "", sage: "", blue: "", rose: "" };
+    setHighlightMeanings(cleared);
+    localStorage.setItem("selah-highlight-meanings-v1", JSON.stringify(cleared));
   };
 
   const selectWord = async (word: string, verseId: number, wordKey: string, wordOrdinal: number, wordOccurrence: number) => {
@@ -2061,6 +2111,17 @@ export default function Home() {
                 <strong>{davidFallbackVoice ? davidFallbackVoice.name : "Microsoft David"}</strong>
                 <p>All browser-generated read aloud is limited to David. Other installed or cloud voices are no longer shown.</p>
               </div>
+              <label className="settings-toggle">
+                <span>Dock</span>
+                <input type="checkbox" checked={audioDockEnabled} onChange={(event) => {
+                  const enabled = event.target.checked;
+                  setAudioDockEnabled(enabled);
+                  localStorage.setItem("selah-audio-dock-enabled", String(enabled));
+                  if (enabled) setAudioDockCollapsed(false);
+                }} />
+                <i aria-hidden="true" />
+              </label>
+              <p className="settings-help">Turn this off to hide the read aloud dock at the bottom of the page.</p>
               <label className="speed-control">
                 <span>Speed</span>
                 <input
@@ -2081,6 +2142,72 @@ export default function Home() {
                 <strong>{rate.toFixed(2)}x</strong>
                 <button type="button" onClick={() => setRate(DEFAULT_READ_ALOUD_RATE)}>Default</button>
               </label>
+              <div className="highlight-meaning-section">
+                <div className="settings-card-heading settings-card-heading-mini">
+                  <span>ORGANIZATION</span>
+                  <button
+                    type="button"
+                    className="settings-card-heading-toggle"
+                    onClick={() => {
+                      const next = !highlightMeaningSectionOpen;
+                      setHighlightMeaningSectionOpen(next);
+                      localStorage.setItem("selah-highlight-meaning-section-open", String(next));
+                    }}
+                    aria-expanded={highlightMeaningSectionOpen}
+                    aria-label={highlightMeaningSectionOpen ? "Collapse highlight meanings" : "Expand highlight meanings"}
+                  >
+                    <strong>Highlight meanings</strong>
+                    <span>{highlightMeaningSectionOpen ? "−" : "+"}</span>
+                  </button>
+                </div>
+                {highlightMeaningSectionOpen && (
+                  <>
+                    <div className="highlight-meaning-editor">
+                      <div className="highlight-meaning-palette" role="tablist" aria-label="Highlight colors">
+                        {(Object.keys(highlightColorNames) as HighlightColor[]).map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            className={`color-swatch ${color} ${highlightMeaningColor === color ? "selected" : ""}`}
+                            style={{ "--swatch-color": highlightSwatchColors[color] } as CSSProperties}
+                            onClick={() => setHighlightMeaningColor(color)}
+                            aria-pressed={highlightMeaningColor === color}
+                            aria-label={highlightMeaningLabel(color, highlightMeanings)}
+                            title={highlightMeaningLabel(color, highlightMeanings)}
+                          >
+                            <span className="swatch-chip" style={{ backgroundColor: highlightSwatchColors[color] }} />
+                          </button>
+                        ))}
+                      </div>
+                      <label className="highlight-meaning-input">
+                        <span>Tag</span>
+                        <input
+                          type="text"
+                          value={highlightMeanings[highlightMeaningColor] || ""}
+                          onChange={(event) => updateHighlightMeaning(highlightMeaningColor, event.target.value)}
+                          placeholder="Example: favorite verse, promise, warning"
+                          aria-label={`${highlightColorNames[highlightMeaningColor]} highlight meaning`}
+                        />
+                      </label>
+                    </div>
+                    <div className="highlight-meaning-actions">
+                      <p>Give each color a meaning you’ll remember later. Those labels will also show as tooltips on the highlight buttons.</p>
+                      <button type="button" className="secondary" onClick={resetHighlightMeanings}>Reset meanings</button>
+                    </div>
+                    <div className="highlight-meaning-summary">
+                      {(Object.keys(highlightColorNames) as HighlightColor[]).map((color) => (
+                        <div key={color} className={`highlight-meaning-summary-item ${color}`}>
+                          <span className="swatch-chip" style={{ backgroundColor: highlightSwatchColors[color] }} />
+                          <div>
+                            <strong>{highlightColorNames[color]}</strong>
+                            <p>{highlightMeanings[color]?.trim() || "No meaning set yet"}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
             <div className="settings-side-stack">
               <div className="settings-card">
@@ -2516,7 +2643,7 @@ export default function Home() {
                           <span>Highlight color</span>
                           <div className="verse-color-row">
                             {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => (
-                              <button key={color} className={`color-swatch ${color} ${highlightColor === color ? "selected" : ""}`} style={{ "--swatch-color": highlightSwatchColors[color] } as CSSProperties} onClick={() => setVerseHighlight(verse.id, color)} aria-label={`Highlight ${color}`} title={preferredHighlightColor === color ? "Preferred highlight color" : undefined}>
+                              <button key={color} className={`color-swatch ${color} ${highlightColor === color ? "selected" : ""}`} style={{ "--swatch-color": highlightSwatchColors[color] } as CSSProperties} onClick={() => setVerseHighlight(verse.id, color)} aria-label={highlightMeaningLabel(color, highlightMeanings)} title={highlightMeaningLabel(color, highlightMeanings)}>
                                 <span className="swatch-chip" style={{ backgroundColor: highlightSwatchColors[color] }} />
                               </button>
                             ))}
@@ -2566,7 +2693,7 @@ export default function Home() {
               <strong>{selectedForHighlight.length} {selectedForHighlight.length === 1 ? "verse" : "verses"} selected</strong>
               <span>Highlight:</span>
               {(["gold", "sage", "blue", "rose"] as HighlightColor[]).map((color) => (
-                <button key={color} className={`color-swatch ${color} ${preferredHighlightColor === color ? "preferred" : ""}`} style={{ "--swatch-color": highlightSwatchColors[color] } as CSSProperties} onClick={() => applyHighlight(color)} aria-label={`Highlight ${color}`}>
+                <button key={color} className={`color-swatch ${color} ${preferredHighlightColor === color ? "preferred" : ""}`} style={{ "--swatch-color": highlightSwatchColors[color] } as CSSProperties} onClick={() => applyHighlight(color)} aria-label={highlightMeaningLabel(color, highlightMeanings)} title={highlightMeaningLabel(color, highlightMeanings)}>
                   <span className="swatch-chip" style={{ backgroundColor: highlightSwatchColors[color] }} />
                 </button>
               ))}
@@ -2807,15 +2934,17 @@ export default function Home() {
         <button onClick={() => goToAdjacentChapter(1)} disabled={!hasNextChapter} aria-label="Next chapter" title="Next chapter">›</button>
       </nav>
 
-      <section className={`audio-dock ${audioDockCollapsed ? "collapsed" : ""}`} aria-label="Read aloud controls">
-        {!audioDockCollapsed && <div className="now-reading"><span className="audio-pulse">◖</span><div><small>{isPaused ? "PAUSED" : isReading ? "READING" : "READ ALOUD"}</small><strong title={activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}>{activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}</strong></div></div>}
-        <div className="transport">
-          <button className="skip-button" aria-label="Previous verse" onClick={() => jumpToVerse(Math.max(verses[0]?.id || 1, (activeVerse || selectedVerse) - 1))}>‹<span>|</span></button>
-          {!isReading ? <button className="play-button" onClick={() => startReading()} aria-label="Start read aloud">▶</button> : <button className="play-button" onClick={togglePause} aria-label={isPaused ? "Resume read aloud" : "Pause read aloud"}>{isPaused ? "▶" : "Ⅱ"}</button>}
-          <button className="skip-button" aria-label="Next verse" onClick={() => jumpToVerse(Math.min(verses.at(-1)?.id || 1, (activeVerse || selectedVerse) + 1))}><span>|</span>›</button>
-        </div>
-        <button className="audio-collapse-button" onClick={() => { const next = !audioDockCollapsed; setAudioDockCollapsed(next); localStorage.setItem("selah-audio-dock-collapsed", String(next)); setAudioSettingsOpen(false); }} aria-label={audioDockCollapsed ? "Expand read aloud controls" : "Collapse read aloud controls"}>{audioDockCollapsed ? "+" : "−"}</button>
-      </section>
+      {audioDockEnabled && (
+        <section className={`audio-dock ${audioDockCollapsed ? "collapsed" : ""}`} aria-label="Read aloud controls">
+          {!audioDockCollapsed && <div className="now-reading"><span className="audio-pulse">◖</span><div><small>{isPaused ? "PAUSED" : isReading ? "READING" : "READ ALOUD"}</small><strong title={activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}>{activeVerse ? `${selectedBook.name} ${chapter}:${activeVerse}` : `${selectedBook.name} ${chapter}`}</strong></div></div>}
+          <div className="transport">
+            <button className="skip-button" aria-label="Previous verse" onClick={() => jumpToVerse(Math.max(verses[0]?.id || 1, (activeVerse || selectedVerse) - 1))}>‹<span>|</span></button>
+            {!isReading ? <button className="play-button" onClick={() => startReading()} aria-label="Start read aloud">▶</button> : <button className="play-button" onClick={togglePause} aria-label={isPaused ? "Resume read aloud" : "Pause read aloud"}>{isPaused ? "▶" : "Ⅱ"}</button>}
+            <button className="skip-button" aria-label="Next verse" onClick={() => jumpToVerse(Math.min(verses.at(-1)?.id || 1, (activeVerse || selectedVerse) + 1))}><span>|</span>›</button>
+          </div>
+          <button className="audio-collapse-button" onClick={() => { const next = !audioDockCollapsed; setAudioDockCollapsed(next); localStorage.setItem("selah-audio-dock-collapsed", String(next)); setAudioSettingsOpen(false); }} aria-label={audioDockCollapsed ? "Expand read aloud controls" : "Collapse read aloud controls"}>{audioDockCollapsed ? "+" : "−"}</button>
+        </section>
+      )}
     </main>
   );
 }
