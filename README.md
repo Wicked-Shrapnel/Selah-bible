@@ -12,11 +12,11 @@ Core features:
 - Multiple theme support Green Dark, True Dark, and light. 
 - Read aloud capability across the whole application. 
 - Verse highlighting in multiple colors. 
-![[Pasted image 20260728125850.png]]
+<img width="1923" height="878" alt="image" src="https://github.com/user-attachments/assets/df4b9e24-aefb-4656-9dcf-ce6f6e1be779" />
 
 - Inline note taking
 
-- ![[Pasted image 20260728125353.png]]
+<img width="1330" height="783" alt="image" src="https://github.com/user-attachments/assets/2373e654-e635-48f7-84a0-1c7fbd234d58" />
  Built in commentary panel for each chapter (Matthew Henry’s Concise Commentary on the Whole Bible)
  
 ![[Pasted image 20260728130621.png]]
