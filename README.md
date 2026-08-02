@@ -19,12 +19,14 @@ Core features:
 <img width="1330" height="783" alt="image" src="https://github.com/user-attachments/assets/2373e654-e635-48f7-84a0-1c7fbd234d58" />
  Built in commentary panel for each chapter (Matthew Henry’s Concise Commentary on the Whole Bible)
  
-![[Pasted image 20260728130621.png]]
+![[<img width="904" height="817" alt="image" src="https://github.com/user-attachments/assets/4e93d712-7717-45dc-a0bb-fefa18062f9e" />
+]]
  Read aloud with diverse highlighted. 
  Original language panel that allows the user to select individual words and will read and pronounce the word in the original language. Disclaimer this feature in particular I would caution against using one hundred percent. I am by no means a linguist. So make sure to double check any information that comes from this feature. 
 
 Whole Bible keyword search (Still needs to be refined.)
-![[Pasted image 20260728132045.png]]
+![[<img width="1965" height="879" alt="image" src="https://github.com/user-attachments/assets/fdb0374c-95bd-47a1-a913-cebbb55b958f" />
+]]
 
 
 Quick setup guide
