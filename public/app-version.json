@@ -1,8 +1,18 @@
 {
-  "latestVersion": "2.0.16",
+  "latestVersion": "2.0.17",
   "releasedAt": "2026-08-02",
   "releaseUrl": "https://github.com/Wicked-Shrapnel/Selah-bible/archive/refs/heads/main.zip",
   "releases": [
+    {
+      "version": "2.0.17",
+      "releasedAt": "2026-08-02",
+      "title": "Update notes preview",
+      "changes": [
+        "When Selah finds a newer version, it now opens the patch notes immediately so the update does not feel silent.",
+        "The local updater still installs from GitHub through the app, and saved highlights, notes, the bookmark, and reading history stay backed up.",
+        "This keeps the automatic update flow visible while you verify the new version."
+      ]
+    },
     {
       "version": "2.0.16",
       "releasedAt": "2026-08-02",

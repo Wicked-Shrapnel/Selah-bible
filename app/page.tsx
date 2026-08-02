@@ -62,7 +62,7 @@ type PendingReleaseNotes = { fromVersion: string; toVersion: string; releases: R
 type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string; releases?: ReleaseNote[]; changelog?: ReleaseNote[]; notes?: string[] };
 type HighlightMeaningMap = Record<HighlightColor, string>;
 
-const APP_VERSION = "2.0.16";
+const APP_VERSION = "2.0.17";
 const APP_VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/Wicked-Shrapnel/Selah-bible/main/public/app-version.json";
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const UPDATE_NOTES_STORAGE_KEY = "selah-pending-release-notes-v1";
@@ -972,7 +972,8 @@ export default function Home() {
         localStorage.setItem(UPDATE_NOTES_STORAGE_KEY, JSON.stringify({ fromVersion: APP_VERSION, toVersion: nextVersion, releases } satisfies PendingReleaseNotes));
         setUpdateAvailableVersion(nextVersion);
         setUpdateStatus("available");
-        setUpdateMessage(`Version ${nextVersion} is available.`);
+        setUpdateMessage(`Version ${nextVersion} is available. The patch notes are open.`);
+        setReleaseNotesModal({ fromVersion: APP_VERSION, toVersion: nextVersion, releases });
       } else {
         setUpdateAvailableVersion("");
         setUpdateStatus("current");
