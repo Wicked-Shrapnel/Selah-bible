@@ -1,8 +1,18 @@
 {
-  "latestVersion": "2.0.18",
+  "latestVersion": "2.0.19",
   "releasedAt": "2026-08-02",
   "releaseUrl": "https://github.com/Wicked-Shrapnel/Selah-bible/archive/refs/heads/main.zip",
   "releases": [
+    {
+      "version": "2.0.19",
+      "releasedAt": "2026-08-02",
+      "title": "Fresh updater target",
+      "changes": [
+        "Bumped Selah again so an already-open copy can detect a newer live build.",
+        "This gives the updater a fresh version to notice even if the app has been left open during the previous test.",
+        "The patch notes handoff remains visible on reload."
+      ]
+    },
     {
       "version": "2.0.18",
       "releasedAt": "2026-08-02",
