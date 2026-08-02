@@ -1,8 +1,18 @@
 {
-  "latestVersion": "2.0.15",
+  "latestVersion": "2.0.16",
   "releasedAt": "2026-08-02",
   "releaseUrl": "https://github.com/Wicked-Shrapnel/Selah-bible/archive/refs/heads/main.zip",
   "releases": [
+    {
+      "version": "2.0.16",
+      "releasedAt": "2026-08-02",
+      "title": "Updater verification checkpoint",
+      "changes": [
+        "Bumped Selah to a new release so the local updater can be tested against a fresh version.",
+        "Saved highlights, notes, the bookmark, and reading history should carry through the update unchanged.",
+        "This release exists to confirm the automatic update flow end to end."
+      ]
+    },
     {
       "version": "2.0.15",
       "releasedAt": "2026-08-02",
