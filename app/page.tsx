@@ -773,14 +773,14 @@ export default function Home() {
 
   const openVersionHistory = async () => {
     setVersionHistoryOpen(true);
-    setVersionHistoryNotes([{ version: APP_VERSION, title: "Loading version history", changes: ["Checking the update board..."] }]);
+    setVersionHistoryNotes([{ version: APP_VERSION, title: "Loading recent updates", changes: ["Checking the latest release notes..."] }]);
     const historyUrls = [`${APP_VERSION_MANIFEST_URL}?history=${Date.now()}`, `/app-version.json?history=${Date.now()}`];
     for (const url of historyUrls) {
       try {
         const response = await fetch(url, { cache: "no-store" });
         if (!response.ok) throw new Error("Version history unavailable");
         const manifest = await response.json() as AppVersionManifest;
-        const releases = allReleaseNotes(manifest);
+        const releases = allReleaseNotes(manifest).slice(0, 6);
         if (releases.length) {
           setVersionHistoryNotes(releases);
           return;
@@ -789,7 +789,7 @@ export default function Home() {
         // Try the next history source.
       }
     }
-    setVersionHistoryNotes([{ version: APP_VERSION, title: "Version history unavailable", changes: ["Selah could not load the update board right now."] }]);
+    setVersionHistoryNotes([{ version: APP_VERSION, title: "Recent updates unavailable", changes: ["Selah could not load the latest release notes right now."] }]);
   };
 
   useEffect(() => {
@@ -2598,8 +2598,8 @@ export default function Home() {
             <div className="release-notes-heading">
               <div>
                 <span>VERSION HISTORY</span>
-                <strong>Update board</strong>
-                <small>Showing the release notes Selah uses for update popups.</small>
+                <strong>Most recent updates</strong>
+                <small>Showing the newest release notes first.</small>
               </div>
               <button className="ui-close-button" onClick={() => setVersionHistoryOpen(false)} aria-label="Close version history">×</button>
             </div>
