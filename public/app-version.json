@@ -1,8 +1,28 @@
 {
-  "latestVersion": "2.0.13",
-  "releasedAt": "2026-07-31",
+  "latestVersion": "2.0.15",
+  "releasedAt": "2026-08-02",
   "releaseUrl": "https://github.com/Wicked-Shrapnel/Selah-bible/archive/refs/heads/main.zip",
   "releases": [
+    {
+      "version": "2.0.15",
+      "releasedAt": "2026-08-02",
+      "title": "Automatic local updater",
+      "changes": [
+        "Update now installs the latest GitHub version through Selah's local server instead of opening a zip download.",
+        "Saved highlights, notes, reading place, and reading history are backed up before the update runs.",
+        "If local files have been changed, Selah stops before overwriting anything and shows a message."
+      ]
+    },
+    {
+      "version": "2.0.14",
+      "releasedAt": "2026-08-02",
+      "title": "Reading history on the live release",
+      "changes": [
+        "The live release now includes Reading History in the book selection screen.",
+        "It remembers the last 50 chapters you've read.",
+        "You can jump back to any of those chapters from the list."
+      ]
+    },
     {
       "version": "2.0.13",
       "releasedAt": "2026-08-02",

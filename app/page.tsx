@@ -56,13 +56,13 @@ type BibleSourceVerse = { verse: string; text: string };
 type BibleSourceChapter = { chapter: string; verses: BibleSourceVerse[] };
 type BibleSourceBook = { book: string; chapters: BibleSourceChapter[] };
 type BibleSearchResult = { book: Book; chapter: number; verse: number; reference: string; text: string; rank: number; kind: "match" | "suggestion" };
-type UpdateStatus = "idle" | "checking" | "current" | "available" | "error";
+type UpdateStatus = "idle" | "checking" | "current" | "available" | "updating" | "error";
 type ReleaseNote = { version: string; title?: string; releasedAt?: string; changes?: string[] };
 type PendingReleaseNotes = { fromVersion: string; toVersion: string; releases: ReleaseNote[] };
 type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string; releases?: ReleaseNote[]; changelog?: ReleaseNote[]; notes?: string[] };
 type HighlightMeaningMap = Record<HighlightColor, string>;
 
-const APP_VERSION = "2.0.13";
+const APP_VERSION = "2.0.15";
 const APP_VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/Wicked-Shrapnel/Selah-bible/main/public/app-version.json";
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const UPDATE_NOTES_STORAGE_KEY = "selah-pending-release-notes-v1";
@@ -578,7 +578,7 @@ function verseWordCount(text: string) {
 }
 
 export default function Home() {
-  const showDevBadge = process.env.NODE_ENV !== "production";
+  const showDevBadge = false;
   const [selectedBook, setSelectedBook] = useState(books[0]);
   const [chapter, setChapter] = useState(1);
   const [verses, setVerses] = useState<Verse[]>(genesisOne);
@@ -646,7 +646,7 @@ export default function Home() {
   const [isCommentaryPaused, setIsCommentaryPaused] = useState(false);
   const [commentaryWordIndex, setCommentaryWordIndex] = useState<number | null>(null);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
-  const [updateReleaseUrl, setUpdateReleaseUrl] = useState("");
+  const [updateAvailableVersion, setUpdateAvailableVersion] = useState("");
   const [updateMessage, setUpdateMessage] = useState("Ready to check for a newer Selah build.");
   const [releaseNotesModal, setReleaseNotesModal] = useState<PendingReleaseNotes | null>(null);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
@@ -967,27 +967,38 @@ export default function Home() {
       const manifest = await response.json() as AppVersionManifest;
       const nextVersion = manifest.latestVersion || manifest.version;
       if (!nextVersion) throw new Error("Version manifest is missing a version");
-      setUpdateReleaseUrl(manifest.releaseUrl || "");
       if (compareVersions(nextVersion, APP_VERSION) > 0) {
         const releases = releaseNotesForUpdate(manifest, APP_VERSION, nextVersion);
         localStorage.setItem(UPDATE_NOTES_STORAGE_KEY, JSON.stringify({ fromVersion: APP_VERSION, toVersion: nextVersion, releases } satisfies PendingReleaseNotes));
+        setUpdateAvailableVersion(nextVersion);
         setUpdateStatus("available");
-        setUpdateMessage(`Version ${nextVersion} is available. Refresh is disabled for now.`);
+        setUpdateMessage(`Version ${nextVersion} is available.`);
       } else {
+        setUpdateAvailableVersion("");
         setUpdateStatus("current");
         setUpdateMessage("Selah is up to date.");
       }
     } catch {
+      setUpdateAvailableVersion("");
       setUpdateStatus("error");
       setUpdateMessage("Selah could not check for updates right now.");
     }
   };
 
-  const applyAppUpdate = (releaseUrl = updateReleaseUrl) => {
+  const applyAppUpdate = async () => {
     snapshotSavedLibrary();
-    const target = typeof releaseUrl === "string" && releaseUrl.trim() ? releaseUrl : updateReleaseUrl || window.location.href;
-    const nextUrl = target.includes("?") ? `${target}&updated=${Date.now()}` : `${target}?updated=${Date.now()}`;
-    window.location.replace(nextUrl);
+    setUpdateStatus("updating");
+    setUpdateMessage(`Installing version ${updateAvailableVersion || "the latest build"}...`);
+    try {
+      const response = await fetch("/api/update", { method: "POST" });
+      const result = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(result.error || "The local updater could not finish.");
+      setUpdateMessage("Update installed. Reloading Selah...");
+      window.location.replace(`${window.location.pathname}?updated=${Date.now()}`);
+    } catch (error) {
+      setUpdateStatus("error");
+      setUpdateMessage(error instanceof Error ? error.message : "Selah could not install the update.");
+    }
   };
 
   useEffect(() => {
@@ -2354,8 +2365,9 @@ export default function Home() {
                   <button type="button" onClick={openVersionHistory} aria-label="Open version history">History</button>
                 </div>
                 <div className="settings-action-row">
-                  <button onClick={checkForAppUpdate} disabled={updateStatus === "checking"}>{updateStatus === "checking" ? "Checking..." : "Check for update"}</button>
-                  {updateStatus === "available" && <button className="primary" onClick={() => applyAppUpdate()}>Update now</button>}
+                  <button onClick={checkForAppUpdate} disabled={updateStatus === "checking" || updateStatus === "updating"}>{updateStatus === "checking" ? "Checking..." : "Check for update"}</button>
+                  {updateStatus === "available" && <button className="primary" onClick={() => void applyAppUpdate()}>Update now</button>}
+                  {updateStatus === "updating" && <button className="primary" disabled>Updating...</button>}
                   <span className={`update-inline-message ${updateStatus}`}>{updateMessage}</span>
                 </div>
               </div>
