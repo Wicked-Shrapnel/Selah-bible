@@ -62,10 +62,11 @@ type PendingReleaseNotes = { fromVersion: string; toVersion: string; releases: R
 type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string; releases?: ReleaseNote[]; changelog?: ReleaseNote[]; notes?: string[] };
 type HighlightMeaningMap = Record<HighlightColor, string>;
 
-const APP_VERSION = "2.0.17";
+const APP_VERSION = "2.0.18";
 const APP_VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/Wicked-Shrapnel/Selah-bible/main/public/app-version.json";
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const UPDATE_NOTES_STORAGE_KEY = "selah-pending-release-notes-v1";
+const UPDATE_NOTES_SESSION_KEY = "selah-pending-release-notes-session-v1";
 const LAST_SEEN_VERSION_STORAGE_KEY = "selah-last-seen-version-v1";
 const READING_HISTORY_STORAGE_KEY = "selah-reading-history-v1";
 const READING_HISTORY_LIMIT = 50;
@@ -134,6 +135,33 @@ function allReleaseNotes(manifest: AppVersionManifest): ReleaseNote[] {
       changes: release.changes?.length ? release.changes : ["Selah has been updated to this version."],
     }))
     .sort((left, right) => compareVersions(right.version, left.version));
+}
+
+function persistPendingReleaseNotes(notes: PendingReleaseNotes) {
+  const serialized = JSON.stringify(notes);
+  try {
+    localStorage.setItem(UPDATE_NOTES_STORAGE_KEY, serialized);
+  } catch {
+    // Ignore storage failures; the session copy is what matters for the update handoff.
+  }
+  try {
+    sessionStorage.setItem(UPDATE_NOTES_SESSION_KEY, serialized);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function clearPendingReleaseNotes() {
+  try {
+    localStorage.removeItem(UPDATE_NOTES_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
+  try {
+    sessionStorage.removeItem(UPDATE_NOTES_SESSION_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
 }
 
 function closestReadAloudRate(value: number) {
@@ -779,7 +807,8 @@ export default function Home() {
       const savedAudioSource = localStorage.getItem("selah-audio-source") as AudioSourcePreference | null;
       const savedOriginalDefinition = localStorage.getItem("selah-read-original-definition");
       const savedStudyPanelWidth = Number(localStorage.getItem(STUDY_PANEL_WIDTH_STORAGE_KEY));
-      const pendingReleaseNotes = localStorage.getItem(UPDATE_NOTES_STORAGE_KEY);
+      const sessionPendingReleaseNotes = sessionStorage.getItem(UPDATE_NOTES_SESSION_KEY);
+      const pendingReleaseNotes = sessionPendingReleaseNotes || localStorage.getItem(UPDATE_NOTES_STORAGE_KEY);
       const searchParams = new URLSearchParams(window.location.search);
       let restoredPlace: { place: SavedPlace; book: Book } | null = null;
       if (pendingReleaseNotes) {
@@ -792,7 +821,7 @@ export default function Home() {
         } catch {
           // Ignore malformed pending update notes.
         } finally {
-          localStorage.removeItem(UPDATE_NOTES_STORAGE_KEY);
+          clearPendingReleaseNotes();
         }
       } else {
         const lastSeenVersion = localStorage.getItem(LAST_SEEN_VERSION_STORAGE_KEY);
@@ -969,7 +998,7 @@ export default function Home() {
       if (!nextVersion) throw new Error("Version manifest is missing a version");
       if (compareVersions(nextVersion, APP_VERSION) > 0) {
         const releases = releaseNotesForUpdate(manifest, APP_VERSION, nextVersion);
-        localStorage.setItem(UPDATE_NOTES_STORAGE_KEY, JSON.stringify({ fromVersion: APP_VERSION, toVersion: nextVersion, releases } satisfies PendingReleaseNotes));
+        persistPendingReleaseNotes({ fromVersion: APP_VERSION, toVersion: nextVersion, releases } satisfies PendingReleaseNotes);
         setUpdateAvailableVersion(nextVersion);
         setUpdateStatus("available");
         setUpdateMessage(`Version ${nextVersion} is available. The patch notes are open.`);
@@ -988,6 +1017,14 @@ export default function Home() {
 
   const applyAppUpdate = async () => {
     snapshotSavedLibrary();
+    const pendingReleaseNotes = localStorage.getItem(UPDATE_NOTES_STORAGE_KEY);
+    if (pendingReleaseNotes) {
+      try {
+        sessionStorage.setItem(UPDATE_NOTES_SESSION_KEY, pendingReleaseNotes);
+      } catch {
+        // Ignore session storage failures; local storage still preserves the notes.
+      }
+    }
     setUpdateStatus("updating");
     setUpdateMessage(`Installing version ${updateAvailableVersion || "the latest build"}...`);
     try {

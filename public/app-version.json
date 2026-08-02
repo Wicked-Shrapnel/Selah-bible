@@ -1,8 +1,18 @@
 {
-  "latestVersion": "2.0.17",
+  "latestVersion": "2.0.18",
   "releasedAt": "2026-08-02",
   "releaseUrl": "https://github.com/Wicked-Shrapnel/Selah-bible/archive/refs/heads/main.zip",
   "releases": [
+    {
+      "version": "2.0.18",
+      "releasedAt": "2026-08-02",
+      "title": "Update notes persistence",
+      "changes": [
+        "Selah now keeps the patch notes available through the update reload so they show on first boot after installing a new version.",
+        "The updater stores the release notes in both local and session storage so the notes survive the refresh handoff more reliably.",
+        "This keeps the update flow visible instead of silently bumping the version."
+      ]
+    },
     {
       "version": "2.0.17",
       "releasedAt": "2026-08-02",
