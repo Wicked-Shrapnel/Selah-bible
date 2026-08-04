@@ -38,6 +38,8 @@ Quick setup guide
 5. Run npm run dev.
 6. Open the local URL it prints.
 
+The terminal window must remain open for the server to continue running and for the app to continue to function. 
+
 
 # version 2.1 
 
