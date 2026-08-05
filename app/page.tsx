@@ -606,7 +606,6 @@ function verseWordCount(text: string) {
 }
 
 export default function Home() {
-  const showDevBadge = false;
   const [selectedBook, setSelectedBook] = useState(books[0]);
   const [chapter, setChapter] = useState(1);
   const [verses, setVerses] = useState<Verse[]>(genesisOne);
@@ -681,6 +680,10 @@ export default function Home() {
   const [versionHistoryNotes, setVersionHistoryNotes] = useState<ReleaseNote[]>([]);
   const cancelled = useRef(false);
   const activeAudio = useRef<HTMLAudioElement | null>(null);
+  const [updateReleaseNotes, setUpdateReleaseNotes] = useState<ReleaseNote[]>([]);
+  const [updateBranch, setUpdateBranch] = useState("main");
+  const showDevBadge = updateBranch === "dev";
+  const [updateManifestUrl, setUpdateManifestUrl] = useState(DEFAULT_APP_VERSION_MANIFEST_URL);
   const syncedAudioVerse = useRef<number | null>(null);
   const passagePickerRef = useRef<HTMLDivElement | null>(null);
   const savedPanelRef = useRef<HTMLDivElement | null>(null);
