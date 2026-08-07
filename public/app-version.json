@@ -1,8 +1,18 @@
 {
-  "latestVersion": "2.0.12",
+  "latestVersion": "2.0.13",
   "releasedAt": "2026-07-31",
   "releaseUrl": "https://github.com/Wicked-Shrapnel/Selah-bible/archive/refs/heads/main.zip",
   "releases": [
+    {
+      "version": "2.0.13",
+      "releasedAt": "2026-08-02",
+      "title": "Reading history in the book picker",
+      "changes": [
+        "Added Reading History in the book selection screen.",
+        "It remembers the last 50 chapters you've read.",
+        "You can jump back to any of those chapters from the list."
+      ]
+    },
     {
       "version": "2.0.12",
       "releasedAt": "2026-07-31",
@@ -10,7 +20,7 @@
       "changes": [
         "Removed the extra divider lines in the updater panel version section.",
         "Kept the manual update flow in place so you can verify the update button safely.",
-        "This gives the local test build a new GitHub version to detect."
+        "This gave the local test build a newer GitHub version to detect."
       ]
     },
     {

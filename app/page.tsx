@@ -49,6 +49,7 @@ type CommentarySource = {
 };
 type CommentaryChapter = { source: CommentarySource; book: string; chapter: number; entries: CommentaryEntry[] };
 type SavedPlace = { book: string; chapter: number };
+type ReadingHistoryEntry = SavedPlace & { visitedAt: string };
 type SavedReference = { key: string; book: Book; chapter: number; verseIds: number[]; reference: string };
 type SavedTextCache = Record<string, Record<number, string>>;
 type BibleSourceVerse = { verse: string; text: string };
@@ -61,11 +62,13 @@ type PendingReleaseNotes = { fromVersion: string; toVersion: string; releases: R
 type AppVersionManifest = { latestVersion?: string; version?: string; releaseUrl?: string; releasedAt?: string; releases?: ReleaseNote[]; changelog?: ReleaseNote[]; notes?: string[] };
 type HighlightMeaningMap = Record<HighlightColor, string>;
 
-const APP_VERSION = "2.0.12";
+const APP_VERSION = "2.0.13";
 const APP_VERSION_MANIFEST_URL = "https://raw.githubusercontent.com/Wicked-Shrapnel/Selah-bible/main/public/app-version.json";
 const STUDY_PANEL_WIDTH_STORAGE_KEY = "selah-study-panel-width-v1";
 const UPDATE_NOTES_STORAGE_KEY = "selah-pending-release-notes-v1";
 const LAST_SEEN_VERSION_STORAGE_KEY = "selah-last-seen-version-v1";
+const READING_HISTORY_STORAGE_KEY = "selah-reading-history-v1";
+const READING_HISTORY_LIMIT = 50;
 const READ_ALOUD_RATE_OPTIONS = [0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3];
 const DEFAULT_READ_ALOUD_RATE = 0.9;
 const MIN_STUDY_PANEL_WIDTH = 380;
@@ -165,6 +168,33 @@ function normalizeSavedPlace(value: unknown): { place: SavedPlace; book: Book } 
   const book = books.find((item) => item.name === bookName);
   if (!book || chapter < 1 || chapter > book.chapters) return null;
   return { place: { book: book.name, chapter }, book };
+}
+
+function normalizeReadingHistory(value: unknown): ReadingHistoryEntry[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  return value.flatMap((item) => {
+    const normalized = normalizeSavedPlace(item);
+    if (!normalized || !item || typeof item !== "object") return [];
+    const visitedAt = typeof (item as { visitedAt?: unknown }).visitedAt === "string"
+      ? (item as { visitedAt: string }).visitedAt
+      : "";
+    if (!visitedAt || Number.isNaN(Date.parse(visitedAt))) return [];
+    const key = `${normalized.place.book}-${normalized.place.chapter}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [{ ...normalized.place, visitedAt }];
+  }).slice(0, READING_HISTORY_LIMIT);
+}
+
+function nextReadingHistory(current: ReadingHistoryEntry[], bookName: string, chapterNumber: number): ReadingHistoryEntry[] {
+  const book = books.find((item) => item.name === bookName);
+  if (!book || chapterNumber < 1 || chapterNumber > book.chapters) return current;
+  const nextEntry = { book: book.name, chapter: chapterNumber, visitedAt: new Date().toISOString() };
+  return [
+    nextEntry,
+    ...current.filter((entry) => !(entry.book === nextEntry.book && entry.chapter === nextEntry.chapter)),
+  ].slice(0, READING_HISTORY_LIMIT);
 }
 
 const bookReferenceAliases: Record<string, string> = {
@@ -490,6 +520,18 @@ function formatNoteReference(book: string, chapterNumber: number, verseIds: numb
   return `${book} ${chapterNumber}:${sorted.join(", ")}`;
 }
 
+function readingHistoryDateLabel(visitedAt: string) {
+  const visited = new Date(visitedAt);
+  if (Number.isNaN(visited.getTime())) return "Earlier";
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const startOfVisited = new Date(visited.getFullYear(), visited.getMonth(), visited.getDate()).getTime();
+  const dayDifference = Math.round((startOfToday - startOfVisited) / 86400000);
+  if (dayDifference === 0) return "Today";
+  if (dayDifference === 1) return "Yesterday";
+  return visited.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
 function parseSavedReference(key: string): SavedReference | null {
   const book = [...books].sort((a, b) => b.name.length - a.name.length).find((item) => key.startsWith(`${item.name}-`));
   if (!book) return null;
@@ -536,6 +578,7 @@ function verseWordCount(text: string) {
 }
 
 export default function Home() {
+  const showDevBadge = process.env.NODE_ENV !== "production";
   const [selectedBook, setSelectedBook] = useState(books[0]);
   const [chapter, setChapter] = useState(1);
   const [verses, setVerses] = useState<Verse[]>(genesisOne);
@@ -588,6 +631,9 @@ export default function Home() {
   const [commentaryResourceOpen, setCommentaryResourceOpen] = useState(false);
   const [commentaryResourceView, setCommentaryResourceView] = useState<CommentaryView>("expository");
   const [bookmark, setBookmark] = useState<SavedPlace | null>(null);
+  const [readingHistory, setReadingHistory] = useState<ReadingHistoryEntry[]>([]);
+  const [readingHistoryReady, setReadingHistoryReady] = useState(false);
+  const [readingHistoryOpen, setReadingHistoryOpen] = useState(false);
   const [savedPanelOpen, setSavedPanelOpen] = useState(false);
   const [savedViewTab, setSavedViewTab] = useState<"highlights" | "notes">("highlights");
   const [searchExpanded, setSearchExpanded] = useState(false);
@@ -723,6 +769,7 @@ export default function Home() {
       const savedHighlights = localStorage.getItem("selah-highlights-v2");
       const savedNotes = localStorage.getItem("selah-notes-v2");
       const savedPlace = localStorage.getItem("selah-reading-place-v1");
+      const savedReadingHistory = localStorage.getItem(READING_HISTORY_STORAGE_KEY);
       const savedHighlightColor = localStorage.getItem("selah-highlight-color") as HighlightColor | null;
       const savedHighlightMeanings = localStorage.getItem("selah-highlight-meanings-v1");
       const savedHighlightMeaningSectionOpen = localStorage.getItem("selah-highlight-meaning-section-open");
@@ -772,6 +819,13 @@ export default function Home() {
         setHighlights(Array.isArray(parsed) ? Object.fromEntries(parsed.map((key) => [key, "gold" as HighlightColor])) : parsed);
       }
       if (savedNotes) setNotes(JSON.parse(savedNotes));
+      if (savedReadingHistory) {
+        try {
+          setReadingHistory(normalizeReadingHistory(JSON.parse(savedReadingHistory)));
+        } catch {
+          localStorage.removeItem(READING_HISTORY_STORAGE_KEY);
+        }
+      }
       if (savedPlace) {
         try {
           restoredPlace = normalizeSavedPlace(JSON.parse(savedPlace));
@@ -809,12 +863,14 @@ export default function Home() {
         pendingSavedVerse.current = linkedPassage.verse;
         setSelectedBook(linkedPassage.book);
         setChapter(linkedPassage.chapter);
+        setReadingHistoryReady(true);
         return;
       }
       if (restoredPlace) {
         setSelectedBook(restoredPlace.book);
         setChapter(restoredPlace.place.chapter);
       }
+      setReadingHistoryReady(true);
     });
   }, []);
 
@@ -883,6 +939,7 @@ export default function Home() {
       "selah-highlights-v2",
       "selah-notes-v2",
       "selah-reading-place-v1",
+      READING_HISTORY_STORAGE_KEY,
       "selah-highlight-color",
       "selah-highlight-meanings-v1",
       "selah-audio-dock-collapsed",
@@ -1646,6 +1703,28 @@ export default function Home() {
     () => [...recentHighlights.map((item) => item.saved), ...recentNotes.map((item) => item.saved)],
     [highlights, notes],
   );
+  const readingHistoryGroups = useMemo(() => {
+    return readingHistory.reduce((groups, entry) => {
+      const label = readingHistoryDateLabel(entry.visitedAt);
+      const currentGroup = groups.find((group) => group.label === label);
+      if (currentGroup) currentGroup.entries.push(entry);
+      else groups.push({ label, entries: [entry] });
+      return groups;
+    }, [] as { label: string; entries: ReadingHistoryEntry[] }[]);
+  }, [readingHistory]);
+
+  const openReadingHistoryEntry = (entry: ReadingHistoryEntry) => {
+    const book = books.find((item) => item.name === entry.book);
+    if (!book) return;
+    setSelectedBook(book);
+    setChapter(entry.chapter);
+    setReadingHistoryOpen(false);
+  };
+
+  const clearReadingHistory = () => {
+    setReadingHistory([]);
+    localStorage.removeItem(READING_HISTORY_STORAGE_KEY);
+  };
 
   useEffect(() => {
     if (!verses.length) return;
@@ -1655,6 +1734,15 @@ export default function Home() {
       [cacheKey]: Object.fromEntries(verses.map((verse) => [verse.id, verse.text])),
     }));
   }, [selectedBook.name, chapter, verses]);
+
+  useEffect(() => {
+    if (!readingHistoryReady || !verses.length || isLoading) return;
+    setReadingHistory((current) => {
+      const next = nextReadingHistory(current, selectedBook.name, chapter);
+      localStorage.setItem(READING_HISTORY_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, [selectedBook.name, chapter, isLoading, verses.length, readingHistoryReady]);
 
   useEffect(() => {
     let ignore = false;
@@ -2025,7 +2113,13 @@ export default function Home() {
       <header className="topbar">
         <div className="brand">
           <div className="brand-mark">S</div>
-          <div><strong>Selah</strong><span>Scripture, slowly</span></div>
+          <div className="brand-copy">
+            <div className="brand-title-row">
+              <strong>Selah</strong>
+              {showDevBadge && <span className="environment-badge">DEV</span>}
+            </div>
+            <span>Scripture, slowly</span>
+          </div>
         </div>
 
         <div className="passage-picker" ref={passagePickerRef} aria-label="Choose a Bible passage">
@@ -2341,6 +2435,49 @@ export default function Home() {
         </section>
       )}
 
+      {readingHistoryOpen && (
+        <section className="saved-library saved-library-window reading-history-window" aria-modal="true" role="dialog" aria-label="Reading history">
+          <div className="saved-library-heading reading-history-window-heading">
+            <div><span>YOUR LIBRARY</span><strong>Reading History</strong></div>
+            <button className="ui-close-button" onClick={() => setReadingHistoryOpen(false)} aria-label="Close reading history">×</button>
+          </div>
+          <div className="saved-library-body">
+            <div className="saved-section reading-history">
+              <div className="saved-section-top">
+                <div>
+                  <span>RECENT CHAPTERS</span>
+                  <strong>
+                    {readingHistory.length ? "Recently opened" : "Nothing read yet"}
+                    <span
+                      className="reading-history-limit-tip"
+                      title="A maximum of 50 entries is kept."
+                      aria-label="A maximum of 50 entries is kept."
+                    >
+                      i
+                    </span>
+                  </strong>
+                </div>
+                {readingHistory.length > 0 && <button className="clear-history-button" onClick={clearReadingHistory}>Clear</button>}
+              </div>
+              {readingHistoryGroups.length ? (
+                <div className="reading-history-list">
+                  {readingHistoryGroups.map((group) => (
+                    <section className="reading-history-group" key={group.label}>
+                      <h3>{group.label}</h3>
+                      {group.entries.map((entry) => (
+                        <button key={`${entry.book}-${entry.chapter}-${entry.visitedAt}`} onClick={() => openReadingHistoryEntry(entry)}>
+                          <span><strong>{entry.book} {entry.chapter}</strong></span>
+                        </button>
+                      ))}
+                    </section>
+                  ))}
+                </div>
+              ) : <p className="reading-history-empty">Chapters you open will appear here.</p>}
+            </div>
+          </div>
+        </section>
+      )}
+
       {searchPanelOpen && (
         <section className="search-library" aria-modal="true" role="dialog" aria-label="Bible search results">
           <div className="search-library-heading">
@@ -2527,6 +2664,10 @@ export default function Home() {
                   <b aria-hidden="true">⌕</b>
                   <input autoFocus value={bookFilter} onChange={(event) => setBookFilter(event.target.value)} placeholder="Search for a book…" />
                 </label>
+                <button className="book-menu-history-button" type="button" onClick={() => { setPicker(null); setSearchExpanded(false); setReadingHistoryOpen(true); }}>
+                  <span aria-hidden="true">↺</span>
+                  <strong>Reading History</strong>
+                </button>
                 <div className="testament-columns">
                   {[{ title: "Old Testament", items: filteredOldTestament }, { title: "New Testament", items: filteredNewTestament }].map((group) => (
                     <div key={group.title} className="testament-group">
